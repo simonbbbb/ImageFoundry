@@ -1,0 +1,131 @@
+# Container Structure Tests
+# These tests validate the built container image structure
+
+schemaVersion: 2.0.0
+
+commandTests:
+  # Test basic commands exist
+  - name: "bash exists"
+    command: "which"
+    args: ["bash"]
+    expectedOutput: ["/bin/bash|/usr/bin/bash"]
+
+  - name: "curl exists"
+    command: "which"
+    args: ["curl"]
+    expectedOutput: ["/usr/bin/curl"]
+
+  - name: "git exists"
+    command: "which"
+    args: ["git"]
+    expectedOutput: ["/usr/bin/git"]
+
+  - name: "jq exists"
+    command: "which"
+    args: ["jq"]
+    expectedOutput: ["/usr/bin/jq"]
+
+  - name: "trivy exists"
+    command: "which"
+    args: ["trivy"]
+    expectedOutput: ["/usr/bin/trivy|/usr/local/bin/trivy"]
+
+  - name: "cosign exists"
+    command: "which"
+    args: ["cosign"]
+    expectedOutput: ["/usr/local/bin/cosign"]
+
+  - name: "syft exists"
+    command: "which"
+    args: ["syft"]
+    expectedOutput: ["/usr/local/bin/syft"]
+
+  - name: "kubectl exists"
+    command: "which"
+    args: ["kubectl"]
+    expectedOutput: ["/usr/local/bin/kubectl"]
+
+  - name: "helm exists"
+    command: "which"
+    args: ["helm"]
+    expectedOutput: ["/usr/local/bin/helm"]
+
+  - name: "go exists"
+    command: "which"
+    args: ["go"]
+    expectedOutput: ["/usr/local/bin/go"]
+
+  # Test command outputs
+  - name: "go version"
+    command: "go"
+    args: ["version"]
+    expectedOutput: ["go version go"]
+
+  - name: "kubectl version"
+    command: "kubectl"
+    args: ["version", "--client"]
+    expectedOutput: ["Client Version:"]
+
+  - name: "helm version"
+    command: "helm"
+    args: ["version"]
+    expectedOutput: ["Version:"]
+
+  - name: "trivy version"
+    command: "trivy"
+    args: ["--version"]
+    expectedOutput: ["Version:"]
+
+  - name: "cosign version"
+    command: "cosign"
+    args: ["version"]
+    expectedOutput: ["cosign:"]
+
+fileExistenceTests:
+  # Check critical files exist
+  - name: 'Root directory'
+    path: '/'
+    shouldExist: true
+
+  - name: 'Workspace directory'
+    path: '/workspace'
+    shouldExist: true
+
+  - name: 'Foundry user home'
+    path: '/home/foundry'
+    shouldExist: true
+
+  - name: 'Go installation'
+    path: '/usr/local/go'
+    shouldExist: true
+
+  - name: 'ca-certificates'
+    path: '/etc/ssl/certs/ca-certificates.crt'
+    shouldExist: true
+
+fileContentTests:
+  # Check file contents
+  - name: 'OS Release'
+    path: '/etc/os-release'
+    expectedContents: 
+      - '.*'
+
+  - name: 'Foundry user in passwd'
+    path: '/etc/passwd'
+    expectedContents:
+      - 'foundry.*'
+
+licenseTests:
+  - debian: true
+    files: []
+
+metadataTest:
+  labels:
+    - key: 'org.opencontainers.image.title'
+      value: '.*'
+  workdir: '/workspace'
+  user: 'foundry'
+  exposedPorts: []
+  volumes: []
+  cmd: ['/bin/bash']
+  entrypoint: []

@@ -1,0 +1,189 @@
+# Example: CI/CD Agent Image
+# This configuration creates a ready-to-use CI/CD agent with common DevOps tools
+
+name: cicd-agent
+version: "1.0.0"
+description: "CI/CD agent with full DevOps toolchain"
+author: "DevOps Team"
+
+image:
+  name: "cicd-agent"
+  tag: "v1.0.0"
+  registry: "ghcr.io"
+  namespace: "mycompany"
+
+base:
+  template: "ubuntu-24.04"
+  architecture:
+    - amd64
+    - arm64
+
+tools:
+  languages:
+    go:
+      version: "1.22"
+      install: true
+    nodejs:
+      version: "20"
+      install: true
+    python:
+      version: "3.12"
+      install: true
+    dotnet:
+      version: "8.0"
+      install: false
+    java:
+      version: "21"
+      install: false
+
+  security:
+    trivy:
+      install: true
+      version: "latest"
+    cosign:
+      install: true
+      version: "latest"
+    syft:
+      install: true
+      version: "latest"
+    grype:
+      install: true
+      version: "latest"
+
+  devops:
+    docker:
+      install: true
+    kubectl:
+      version: "1.29"
+      install: true
+    helm:
+      version: "3.14"
+      install: true
+    terraform:
+      version: "1.7"
+      install: true
+    pulumi:
+      version: "latest"
+      install: false
+    argocd:
+      version: "latest"
+      install: true
+
+  packages:
+    - curl
+    - wget
+    - jq
+    - git
+    - git-lfs
+    - vim
+    - nano
+    - htop
+    - tree
+    - unzip
+    - zip
+    - tar
+    - gzip
+    - bzip2
+    - xz-utils
+    - make
+    - build-essential
+    - ssh
+    - rsync
+
+security:
+  trivy:
+    enabled: true
+    severity: "HIGH,CRITICAL"
+    exit_code: 1
+    ignore_unfixed: false
+
+  codeql:
+    enabled: true
+    languages:
+      - go
+      - javascript
+      - python
+
+  compliance:
+    enabled: true
+    standards:
+      - "cis-docker"
+
+  sast:
+    enabled: true
+    tools:
+      - semgrep
+      - gosec
+      - bandit
+
+optimization:
+  multi_stage: true
+  cache_layers: true
+  minify: false
+  strip_debug: true
+
+testing:
+  structure_tests:
+    enabled: true
+    config: "tests/structure-tests.yaml"
+
+  integration_tests:
+    enabled: true
+    timeout: "10m"
+
+  performance_tests:
+    enabled: true
+    benchmark_tool: "hyperfine"
+
+pipeline:
+  github_actions:
+    matrix:
+      os: [ubuntu-latest]
+      arch: [amd64, arm64]
+    parallel:
+      - build
+      - security-scan
+      - compliance-check
+      - test
+
+  artifacts:
+    retention_days: 30
+
+  notifications:
+    slack:
+      enabled: true
+      webhook: "${SLACK_WEBHOOK_URL}"
+
+output:
+  sbom:
+    enabled: true
+    formats:
+      - spdx-json
+      - cyclonedx-json
+
+  signing:
+    enabled: true
+    cosign:
+      enabled: true
+      keyless: true
+
+  attestation:
+    enabled: true
+    provenance: true
+    sbom_attestation: true
+
+custom:
+  pre_build: |
+    echo "Setting up CI/CD agent..."
+    # Configure git
+    git config --global init.defaultBranch main
+    git config --global user.email "cicd@mycompany.com"
+    git config --global user.name "CI/CD Agent"
+
+  post_build: |
+    echo "CI/CD agent build complete!"
+    echo "Installed tools:"
+    go version || true
+    node --version || true
+    kubectl version --client || true
+    helm version || true

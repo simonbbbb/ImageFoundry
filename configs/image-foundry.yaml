@@ -1,0 +1,190 @@
+name: ImageFoundry
+version: "0.1.0"
+description: "A powerful, extensible container image builder with E2E CI/CD, security scanning, and compliance checks"
+author: "Your Name"
+license: "MIT"
+
+# Image configuration
+image:
+  name: "my-custom-image"
+  tag: "latest"
+  registry: "ghcr.io"
+  namespace: "myorg"
+
+# Base template selection
+base:
+  # Available: ubuntu-22.04, ubuntu-24.04, alpine-3.19, alpine-3.20, debian-12
+  template: "ubuntu-24.04"
+  architecture:
+    - amd64
+    - arm64
+
+# Tools and packages to install
+tools:
+  # Programming languages
+  languages:
+    go:
+      version: "1.22"
+      install: true
+    nodejs:
+      version: "20"
+      install: false
+    python:
+      version: "3.12"
+      install: false
+    rust:
+      version: "latest"
+      install: false
+
+  # Security tools
+  security:
+    trivy:
+      install: true
+      version: "latest"
+    cosign:
+      install: true
+      version: "latest"
+    syft:
+      install: true
+      version: "latest"
+
+  # DevOps tools
+  devops:
+    docker:
+      install: true
+    kubectl:
+      version: "1.29"
+      install: true
+    helm:
+      version: "3.14"
+      install: true
+    terraform:
+      version: "1.7"
+      install: false
+
+  # Additional packages
+  packages:
+    - curl
+    - wget
+    - jq
+    - git
+    - vim
+    - htop
+
+# Security scanning configuration
+security:
+  # Enable Trivy vulnerability scanning
+  trivy:
+    enabled: true
+    severity: "HIGH,CRITICAL"
+    exit_code: 1
+    ignore_unfixed: false
+
+  # CodeQL analysis
+  codeql:
+    enabled: true
+    languages:
+      - go
+      - javascript
+
+  # Container compliance
+  compliance:
+    enabled: true
+    standards:
+      - "cis-docker"
+      - "nist"
+
+  # SAST scanning
+  sast:
+    enabled: true
+    tools:
+      - semgrep
+      - gosec
+
+# Build optimization
+optimization:
+  # Multi-stage builds
+  multi_stage: true
+  # Layer caching
+  cache_layers: true
+  # Minimize image size
+  minify: false
+  # Strip debug symbols
+  strip_debug: true
+
+# Testing configuration
+testing:
+  # Container structure tests
+  structure_tests:
+    enabled: true
+    config: "tests/structure-tests.yaml"
+
+  # Integration tests
+  integration_tests:
+    enabled: true
+    timeout: "5m"
+
+  # Performance tests
+  performance_tests:
+    enabled: true
+    benchmark_tool: "hyperfine"
+
+# CI/CD pipeline configuration
+pipeline:
+  # GitHub Actions specific
+  github_actions:
+    # Matrix strategy
+    matrix:
+      os: [ubuntu-latest]
+      arch: [amd64, arm64]
+
+    # Parallel jobs
+    parallel:
+      - build
+      - security-scan
+      - compliance-check
+      - test
+
+  # Artifact retention
+  artifacts:
+    retention_days: 30
+
+  # Notifications
+  notifications:
+    slack:
+      enabled: false
+      webhook: "${SLACK_WEBHOOK_URL}"
+
+# Output configuration
+output:
+  # Generate SBOM
+  sbom:
+    enabled: true
+    formats:
+      - spdx-json
+      - cyclonedx-json
+
+  # Sign images
+  signing:
+    enabled: true
+    cosign:
+      enabled: true
+      keyless: true
+
+  # Attestation
+  attestation:
+    enabled: true
+    provenance: true
+    sbom_attestation: true
+
+# Custom scripts
+custom:
+  # Pre-build hook
+  pre_build: |
+    echo "Running pre-build tasks..."
+    # Add custom pre-build logic here
+
+  # Post-build hook
+  post_build: |
+    echo "Running post-build tasks..."
+    # Add custom post-build logic here

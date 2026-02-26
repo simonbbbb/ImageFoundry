@@ -1,0 +1,65 @@
+# Example: Minimal Development Environment
+# Lightweight development container for quick prototyping
+
+name: dev-minimal
+version: "1.0.0"
+description: "Minimal development environment for quick prototyping"
+
+image:
+  name: "dev-minimal"
+  tag: "latest"
+  registry: "ghcr.io"
+  namespace: "mycompany"
+
+base:
+  template: "alpine-3.20"
+  architecture:
+    - amd64
+    - arm64
+
+tools:
+  languages:
+    go:
+      version: "1.22"
+      install: true
+
+  security:
+    trivy:
+      install: false
+    cosign:
+      install: false
+
+  packages:
+    - curl
+    - wget
+    - jq
+    - git
+    - vim
+
+security:
+  trivy:
+    enabled: false
+
+  codeql:
+    enabled: false
+
+  compliance:
+    enabled: false
+
+optimization:
+  multi_stage: true
+  cache_layers: true
+  minify: true
+  strip_debug: true
+
+testing:
+  structure_tests:
+    enabled: false
+  integration_tests:
+    enabled: false
+
+output:
+  sbom:
+    enabled: false
+  signing:
+    enabled: false
