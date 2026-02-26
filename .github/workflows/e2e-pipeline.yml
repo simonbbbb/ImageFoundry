@@ -72,10 +72,6 @@ jobs:
             platform: linux/amd64
           - arch: arm64
             platform: linux/arm64
-        exclude:
-          # Exclude combinations if needed
-          # - base: alpine-3.20
-          #   arch: arm64
 
     steps:
       - name: Checkout repository
