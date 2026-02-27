@@ -156,9 +156,10 @@ jobs:
           merge-multiple: true
 
       - name: Set image digest
+        id: digest
         run: |
-          DIGEST=$(cat /tmp/digests/*)
-          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+          DIGEST=$(cat /tmp/digests/* | head -1 | tr -d '\n')
+          echo "value=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -170,7 +171,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}'
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -187,7 +188,7 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}'
           format: spdx-json
           output-file: sbom-${{ matrix.base }}.spdx.json
 
@@ -214,11 +215,10 @@ jobs:
           merge-multiple: true
 
       - name: Set image digest
+        id: digest
         run: |
-          DIGEST=$(cat /tmp/digests/* | head -1)
-          echo "Found digest: $DIGEST"
-          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
-          
+          DIGEST=$(cat /tmp/digests/* | head -1 | tr -d '\n')
+          echo "value=$DIGEST" >> $GITHUB_OUTPUT
           if [ -z "$DIGEST" ]; then
             echo "ERROR: No digest found in /tmp/digests/"
             ls -la /tmp/digests/
@@ -240,7 +240,7 @@ jobs:
       - name: Run CIS Docker Benchmark
         run: |
           # Pull the image by digest
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}
           
           # Run container compliance check using Docker Bench Security
           docker run --rm --net host --pid host --userns host \
@@ -256,7 +256,7 @@ jobs:
       - name: Run custom compliance checks
         run: |
           chmod +x scripts/compliance-check.sh
-          ./scripts/compliance-check.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
+          ./scripts/compliance-check.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}
 
   # SAST Analysis
   sast-analysis:
@@ -341,28 +341,29 @@ jobs:
           merge-multiple: true
 
       - name: Set image digest
+        id: digest
         run: |
-          DIGEST=$(cat /tmp/digests/*)
-          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+          DIGEST=$(cat /tmp/digests/* | head -1 | tr -d '\n')
+          echo "value=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Pull image for testing
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}
 
       - name: Run structure tests
         run: |
           container-structure-test test \
-            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }} \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }} \
             --config tests/structure-tests.yaml
 
       - name: Run integration tests
         run: |
           chmod +x scripts/integration-test.sh
-          ./scripts/integration-test.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
+          ./scripts/integration-test.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}
 
       - name: Run smoke tests
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }} echo "Smoke test passed"
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }} echo "Smoke test passed"
 
   # Performance testing
   performance-test:
