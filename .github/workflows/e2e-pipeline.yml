@@ -155,6 +155,11 @@ jobs:
           pattern: digests-${{ matrix.base }}-*
           merge-multiple: true
 
+      - name: Set image digest
+        run: |
+          DIGEST=$(cat /tmp/digests/*)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -165,7 +170,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ matrix.base }}-amd64'
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -201,6 +206,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set image digest
+        run: |
+          DIGEST=$(cat /tmp/digests/* | head -1)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+
       - name: Install OpenSCAP
         run: |
           sudo apt-get update
@@ -215,8 +232,8 @@ jobs:
 
       - name: Run CIS Docker Benchmark
         run: |
-          # Pull the image
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # Pull the image by digest
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
           
           # Run container compliance check using Docker Bench Security
           docker run --rm --net host --pid host --userns host \
@@ -309,24 +326,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.base }}-*
+          merge-multiple: true
+
+      - name: Set image digest
+        run: |
+          DIGEST=$(cat /tmp/digests/*)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+
       - name: Pull image for testing
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ matrix.base }}-amd64
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
 
       - name: Run structure tests
         run: |
           container-structure-test test \
-            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ matrix.base }}-amd64 \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }} \
             --config tests/structure-tests.yaml
 
       - name: Run integration tests
         run: |
           chmod +x scripts/integration-test.sh
-          ./scripts/integration-test.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ matrix.base }}-amd64
+          ./scripts/integration-test.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
 
       - name: Run smoke tests
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ matrix.base }}-amd64 echo "Smoke test passed"
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }} echo "Smoke test passed"
 
   # Performance testing
   performance-test:
