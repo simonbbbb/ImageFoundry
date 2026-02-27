@@ -125,7 +125,7 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          echo "$digest" > "/tmp/digests/digest-${{ matrix.base }}-${{ matrix.arch }}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
@@ -216,7 +216,14 @@ jobs:
       - name: Set image digest
         run: |
           DIGEST=$(cat /tmp/digests/* | head -1)
+          echo "Found digest: $DIGEST"
           echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+          
+          if [ -z "$DIGEST" ]; then
+            echo "ERROR: No digest found in /tmp/digests/"
+            ls -la /tmp/digests/
+            exit 1
+          fi
 
       - name: Install OpenSCAP
         run: |
@@ -249,7 +256,7 @@ jobs:
       - name: Run custom compliance checks
         run: |
           chmod +x scripts/compliance-check.sh
-          ./scripts/compliance-check.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          ./scripts/compliance-check.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ env.IMAGE_DIGEST }}
 
   # SAST Analysis
   sast-analysis:
