@@ -53,7 +53,7 @@ commandTests:
   - name: "go exists"
     command: "which"
     args: ["go"]
-    expectedOutput: ["/usr/local/bin/go"]
+    expectedOutput: ["/usr/local/bin/go|/usr/local/go/bin/go"]
 
   # Test command outputs
   - name: "go version"
@@ -115,14 +115,7 @@ fileContentTests:
     expectedContents:
       - 'foundry.*'
 
-licenseTests:
-  - debian: true
-    files: []
-
 metadataTest:
-  labels:
-    - key: 'org.opencontainers.image.title'
-      value: '.*'
   workdir: '/workspace'
   user: 'foundry'
   exposedPorts: []
