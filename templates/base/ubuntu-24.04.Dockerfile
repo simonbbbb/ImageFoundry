@@ -114,15 +114,20 @@ RUN curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | 
 # Layer for DevOps tools
 FROM base AS devops-layer
 ARG TARGETARCH
-ARG KUBECTL_VERSION=1.29
-ARG HELM_VERSION=3.14
 
-# Install kubectl
-RUN curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/v${KUBECTL_VERSION}.0/bin/linux/${TARGETARCH}/kubectl" && \
-    chmod +x /usr/local/bin/kubectl
+# Get latest kubectl version
+RUN KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | sed 's/v//') && \
+    curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
 
-# Install Helm
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | HELM_INSTALL_VERSION=v${HELM_VERSION}.0 bash
+# Get latest helm version
+RUN HELM_VERSION=$(curl -s https://api.github.com/repos/helm/helm/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
+    curl -fsSL -o helm.tar.gz "https://get.helm.sh/helm-v${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" && \
+    tar -xzf helm.tar.gz && \
+    mv linux-${TARGETARCH}/helm /usr/local/bin/ && \
+    rm -rf linux-${TARGETARCH} helm.tar.gz
+
 
 # Install Docker CLI
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \

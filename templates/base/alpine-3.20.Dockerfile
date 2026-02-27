@@ -114,25 +114,25 @@ RUN curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | 
 # Layer for DevOps tools
 FROM base AS devops-layer
 ARG TARGETARCH
-ARG KUBECTL_VERSION=1.29
-ARG HELM_VERSION=3.14
 
-# Install kubectl
-RUN case "${TARGETARCH}" in \
+# Get latest kubectl version
+RUN KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt | sed 's/v//') && \
+    case "${TARGETARCH}" in \
         amd64) KUBECTL_ARCH="amd64" ;; \
         arm64) KUBECTL_ARCH="arm64" ;; \
         *) KUBECTL_ARCH="${TARGETARCH}" ;; \
     esac && \
-    curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/v${KUBECTL_VERSION}.0/bin/linux/${KUBECTL_ARCH}/kubectl" && \
+    curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
     chmod +x /usr/local/bin/kubectl
 
-# Install Helm
-RUN case "${TARGETARCH}" in \
+# Get latest helm version
+RUN HELM_VERSION=$(curl -s https://api.github.com/repos/helm/helm/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
+    case "${TARGETARCH}" in \
         amd64) HELM_ARCH="amd64" ;; \
         arm64) HELM_ARCH="arm64" ;; \
         *) HELM_ARCH="${TARGETARCH}" ;; \
     esac && \
-    curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}.0-linux-${HELM_ARCH}.tar.gz" -o /tmp/helm.tar.gz && \
+    curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-${HELM_ARCH}.tar.gz" -o /tmp/helm.tar.gz && \
     tar -xzf /tmp/helm.tar.gz -C /tmp && \
     mv /tmp/linux-${HELM_ARCH}/helm /usr/local/bin/helm && \
     rm -rf /tmp/helm.tar.gz /tmp/linux-${HELM_ARCH}

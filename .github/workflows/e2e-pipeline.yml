@@ -106,6 +106,13 @@ jobs:
             type=raw,value=${{ matrix.base }}-${{ matrix.arch }}
             type=sha,prefix=${{ matrix.base }}-
 
+      - name: Get Go version from config
+        id: go-version
+        run: |
+          GO_VERSION=$(yq eval '.tools.languages.go.version' configs/image-foundry.yaml)
+          echo "go-version=$GO_VERSION" >> $GITHUB_OUTPUT
+          echo "Using Go version: $GO_VERSION"
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
@@ -118,7 +125,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            GO_VERSION=1.22.0
+            GO_VERSION=${{ steps.go-version.outputs.go-version }}
             TARGETARCH=${{ matrix.arch }}
 
       - name: Export digest
