@@ -258,7 +258,7 @@ jobs:
           category: "/language:go"
 
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
+        uses: returntocorp/semgrep-action@v2
         with:
           config: >-
             p/security-audit

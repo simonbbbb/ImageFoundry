@@ -100,7 +100,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib
 
 # Install Cosign
 RUN case "${TARGETARCH}" in \
-        amd64) COSIGN_ARCH="x86_64" ;; \
+        amd64) COSIGN_ARCH="amd64" ;; \
         arm64) COSIGN_ARCH="arm64" ;; \
         *) COSIGN_ARCH="${TARGETARCH}" ;; \
     esac && \
@@ -156,19 +156,19 @@ COPY --from=devops-layer /usr/bin/docker /usr/bin/
 # Update PATH
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD echo "Container is healthy" || exit 1
-
 # Labels
 LABEL org.opencontainers.image.title="ImageFoundry Alpine Base Image"
 LABEL org.opencontainers.image.description="Lightweight custom-built container image with development tools"
 LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}"
 LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
 
-# Switch to non-root user (must be final instruction)
+# Switch to non-root user
 USER foundry
 
 WORKDIR /workspace
+
+# Health check (must be final instruction for Semgrep compliance)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD echo "Container is healthy" || exit 1
 
 CMD ["/bin/bash"]
