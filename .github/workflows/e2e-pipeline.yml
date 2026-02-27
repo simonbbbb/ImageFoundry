@@ -21,7 +21,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: simonbbbb/imagefoundry
   COSIGN_EXPERIMENTAL: 1
 
 jobs:
@@ -264,7 +264,6 @@ jobs:
             p/security-audit
             p/owasp-top-ten
             p/cwe-top-25
-          generateSarif: "1"
 
       - name: Run Gosec
         run: |
