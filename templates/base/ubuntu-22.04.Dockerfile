@@ -58,7 +58,7 @@ RUN chown -R foundry:foundry /workspace
 
 # Layer for Go installation
 FROM base AS go-layer
-ARG GO_VERSION=1.21
+ARG GO_VERSION=1.21.0
 ARG TARGETARCH
 
 RUN if [ -n "$GO_VERSION" ]; then \
