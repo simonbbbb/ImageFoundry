@@ -428,12 +428,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create manifest list and push
-        working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+            $(for digest in $(cat /tmp/digests/*); do echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$digest"; done)
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
