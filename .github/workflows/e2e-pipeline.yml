@@ -444,9 +444,14 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
+      - name: Set up Cosign
+        run: |
+          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+          echo "${{ secrets.COSIGN_PASSWORD }}" | cosign import-key --key cosign.key
+
       - name: Sign image with Cosign
         run: |
-          cosign sign --yes \
+          cosign sign --yes --key cosign.key \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Generate SBOM attestation
@@ -454,12 +459,13 @@ jobs:
         with:
           image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
           format: spdx-json
+          output-file: sbom.spdx.json
 
       - name: Attest SBOM
         run: |
           cosign attest --predicate sbom.spdx.json \
             --type spdxjson \
-            --yes \
+            --yes --key cosign.key \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # Notify results
