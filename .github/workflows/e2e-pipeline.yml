@@ -7,17 +7,12 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
-    inputs:
-      base_template:
-        description: 'Base template to build'
-        required: false
-        default: 'ubuntu-24.04'
-        type: choice
-        options:
-          - ubuntu-24.04
-          - ubuntu-22.04
-          - alpine-3.20
-          - all
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+  attestations: write
 
 env:
   REGISTRY: ghcr.io
@@ -444,14 +439,9 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Set up Cosign
+      - name: Sign image with Cosign (keyless)
         run: |
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          echo "${{ secrets.COSIGN_PASSWORD }}" | cosign import-key --key cosign.key
-
-      - name: Sign image with Cosign
-        run: |
-          cosign sign --yes --key cosign.key \
+          cosign sign --yes \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Generate SBOM attestation
@@ -465,7 +455,7 @@ jobs:
         run: |
           cosign attest --predicate sbom.spdx.json \
             --type spdxjson \
-            --yes --key cosign.key \
+            --yes \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # Notify results
