@@ -1,0 +1,71 @@
+---
+name: ✨ Feature Request
+description: Suggest an idea for this project
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ✨ Feature Description
+        A clear and concise description of what you want to add.
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: 🎯 Problem Statement
+      description: What problem does this feature solve? What are you trying to accomplish?
+      placeholder: Describe the problem you're facing...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: A clear and concise description of what you want to happen
+      placeholder: Describe your proposed solution...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternatives Considered
+      description: What alternative approaches or solutions have you considered?
+      placeholder: Describe any alternatives you've thought about...
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📋 Additional Context
+      description: Add any other context, mockups, or screenshots about the feature request here
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: 🎯 Use Cases
+      description: Describe specific use cases this feature would enable
+      placeholder: |
+        - Use case 1: ...
+        - Use case 2: ...
+        - Use case 3: ...
+
+  - type: textarea
+    id: implementation-ideas
+    attributes:
+      label: 🔧 Implementation Ideas
+      description: If you have thoughts on how this could be implemented, please share them here
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 📊 Priority
+      description: How important is this feature to you?
+      options:
+        - Critical - blocking my workflow
+        - High - would significantly improve my workflow
+        - Medium - would be nice to have
+        - Low - minor improvement
+    validations:
+      required: true

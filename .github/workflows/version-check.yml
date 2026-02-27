@@ -1,0 +1,77 @@
+name: Check for Tool Updates
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Get current versions from config
+        id: current
+        run: |
+          GO_CURRENT=$(yq eval '.tools.languages.go.version' configs/image-foundry.yaml)
+          NODE_CURRENT=$(yq eval '.tools.languages.nodejs.version' configs/image-foundry.yaml)
+          PYTHON_CURRENT=$(yq eval '.tools.languages.python.version' configs/image-foundry.yaml)
+          
+          echo "go-current=$GO_CURRENT" >> $GITHUB_OUTPUT
+          echo "node-current=$NODE_CURRENT" >> $GITHUB_OUTPUT
+          echo "python-current=$PYTHON_CURRENT" >> $GITHUB_OUTPUT
+          
+          echo "Current versions:"
+          echo "Go: $GO_CURRENT"
+          echo "Node.js: $NODE_CURRENT"
+          echo "Python: $PYTHON_CURRENT"
+
+      - name: Get latest versions
+        id: latest
+        run: |
+          # Get latest Go version
+          GO_LATEST=$(curl -s https://go.dev/VERSION?text=text | head -1 | sed 's/go//')
+          
+          # Get latest Node.js LTS version
+          NODE_LATEST=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v") and .prerelease == false) | .tag_name' | \
+            grep -E '^v[0-9]+\.[0-9]+' | \
+            sed 's/v//' | \
+            sort -V | \
+            tail -1)
+          
+          # Get latest Python version
+          PYTHON_LATEST=$(curl -s https://api.github.com/repos/python/cpython/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v") and .prerelease == false) | .tag_name' | \
+            sed 's/v//' | \
+            sort -V | \
+            tail -1)
+          
+          echo "go-latest=$GO_LATEST" >> $GITHUB_OUTPUT
+          echo "node-latest=$NODE_LATEST" >> $GITHUB_OUTPUT
+          echo "python-latest=$PYTHON_LATEST" >> $GITHUB_OUTPUT
+          
+          echo "Latest versions:"
+          echo "Go: $GO_LATEST"
+          echo "Node.js: $NODE_LATEST"
+          echo "Python: $PYTHON_LATEST"
+
+      - name: Check for updates and create issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/check-versions.sh
+          
+          # Check each tool
+          ./scripts/check-versions.sh "go" "${{ steps.current.outputs.go-current }}" "${{ steps.latest.outputs.go-latest }}" "${{ github.repository }}"
+          ./scripts/check-versions.sh "nodejs" "${{ steps.current.outputs.node-current }}" "${{ steps.latest.outputs.node-latest }}" "${{ github.repository }}"
+          ./scripts/check-versions.sh "python" "${{ steps.current.outputs.python-current }}" "${{ steps.latest.outputs.python-latest }}" "${{ github.repository }}"

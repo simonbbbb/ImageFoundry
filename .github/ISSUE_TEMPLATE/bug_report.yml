@@ -1,0 +1,108 @@
+---
+name: 🐛 Bug Report
+description: Create a report to help us improve
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Description
+        A clear and concise description of what the bug is.
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 🔄 Reproduction Steps
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: ✅ Expected Behavior
+      description: A clear and concise description of what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots
+      description: If applicable, add screenshots to help explain your problem
+      placeholder: Drag and drop images here
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 🖥️ Operating System
+      description: What OS are you using?
+      options:
+        - Ubuntu 22.04
+        - Ubuntu 24.04
+        - Alpine Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 📦 ImageFoundry Version
+      description: What version are you using?
+      placeholder: e.g., v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: base-image
+    attributes:
+      label: 🏗️ Base Image
+      description: Which base image are you using?
+      options:
+        - ubuntu-22.04
+        - ubuntu-24.04
+        - alpine-3.19
+        - alpine-3.20
+        - debian-12
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: 🔧 Architecture
+      description: What architecture are you building for?
+      options:
+        - amd64
+        - arm64
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📋 Additional Context
+      description: Add any other context about the problem here
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 🔍 Logs
+      description: If applicable, please paste relevant logs here
+      render: shell
+
+  - type: textarea
+    id: possible-solution
+    attributes:
+      label: ✨ Possible Solution
+      description: If you have ideas on how to fix this, please describe them here
