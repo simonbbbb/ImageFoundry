@@ -104,7 +104,8 @@ RUN curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
     apt-get update && apt-get install -y trivy && rm -rf /var/lib/apt/lists/*
 
 # Install Cosign
-RUN curl -fsSL -o /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-${TARGETARCH}" && \
+RUN COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
+    curl -fsSL -o /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-${TARGETARCH}" && \
     chmod +x /usr/local/bin/cosign
 
 # Install Syft

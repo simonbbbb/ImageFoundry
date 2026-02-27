@@ -104,7 +104,8 @@ RUN case "${TARGETARCH}" in \
         arm64) COSIGN_ARCH="arm64" ;; \
         *) COSIGN_ARCH="${TARGETARCH}" ;; \
     esac && \
-    curl -fsSL -o /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-${COSIGN_ARCH}" && \
+    COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
+    curl -fsSL -o /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-${COSIGN_ARCH}" && \
     chmod +x /usr/local/bin/cosign
 
 # Install Syft
