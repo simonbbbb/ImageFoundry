@@ -159,15 +159,15 @@ ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD echo "Container is healthy" || exit 1
 
-# Switch to non-root user
-USER foundry
-
-WORKDIR /workspace
-
 # Labels
 LABEL org.opencontainers.image.title="ImageFoundry Alpine Base Image"
 LABEL org.opencontainers.image.description="Lightweight custom-built container image with development tools"
 LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}"
 LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
+
+# Switch to non-root user (must be final instruction)
+USER foundry
+
+WORKDIR /workspace
 
 CMD ["/bin/bash"]
