@@ -111,6 +111,34 @@ RUN COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releas
 # Install Syft
 RUN curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
+# Layer for compliance tools
+FROM base AS compliance-layer
+ARG TARGETARCH
+
+# Install OpenSCAP for CIS/NIST/PCI-DSS compliance scanning
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openscap-scanner \
+    scap-security-guide \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install OpenSCAP content for Ubuntu
+RUN mkdir -p /usr/share/xml/scap/ssg/content && \
+    wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2404-xccdf.xml \
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2404-xccdf.xml
+
+# Install OPA (Open Policy Agent) for policy-as-code compliance
+RUN OPA_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/opa/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
+    wget -O /usr/local/bin/opa "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_${TARGETARCH}" && \
+    chmod +x /usr/local/bin/opa
+
+# Create compliance policies directory
+RUN mkdir -p /opt/compliance/policies /opt/compliance/reports
+
+# Copy default compliance policies (will be mounted from host)
+COPY compliance/ /opt/compliance/policies/
+
 # Layer for DevOps tools
 FROM base AS devops-layer
 ARG TARGETARCH
@@ -139,10 +167,12 @@ FROM base AS final
 
 # Copy tools from layers if they were built
 COPY --from=go-layer /usr/local/go /usr/local/go
+COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/trivy
+COPY --from=security-layer /usr/local/bin/cosign /usr/local/bin/cosign
+COPY --from=security-layer /usr/local/bin/syft /usr/local/bin/syft
+COPY --from=compliance-layer /usr/local/bin/opa /usr/local/bin/opa
+COPY --from=compliance-layer /opt/compliance /opt/compliance
 COPY --from=go-layer /usr/local/bin/go* /usr/local/bin/
-COPY --from=security-layer /usr/local/bin/cosign /usr/local/bin/
-COPY --from=security-layer /usr/local/bin/syft /usr/local/bin/
-COPY --from=security-layer /usr/bin/trivy /usr/bin/
 COPY --from=devops-layer /usr/local/bin/kubectl /usr/local/bin/
 COPY --from=devops-layer /usr/local/bin/helm /usr/local/bin/
 COPY --from=devops-layer /usr/bin/docker /usr/bin/

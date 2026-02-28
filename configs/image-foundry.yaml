@@ -93,17 +93,17 @@ security:
     standards:
       - "cis-docker"
       - "nist"
-      #- "cis-benchmark"
-      #- "nist-800-53"
-      #- "nist-800-190"
-      #- "pci-dss"
-      #- "soc2"
-      #- "iso-27001"
-      #- "gdpr"
-      #- "hipaa"
-      #- "fips-140-2"
-      #- "disa-stig"
-      #- "asvs-owasp"
+      - "cis-benchmark"
+      - "nist-800-53"
+      - "nist-800-190"
+      - "pci-dss"
+      - "soc2"
+      - "iso-27001"
+      - "gdpr"
+      - "hipaa"
+      - "fips-140-2"
+      - "disa-stig"
+      - "asvs-owasp"
 
   # SAST scanning
   sast:
