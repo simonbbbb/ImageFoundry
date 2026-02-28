@@ -48,9 +48,8 @@ jobs:
             cut -d'.' -f1)
           
           # Get latest Python stable version
-          PYTHON_LATEST=$(curl -s 'https://www.python.org/api/v2/downloads/release/?is_published=true&pre_release=false&limit=1' | \
-            jq -r '.results[0].name' | \
-            grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          PYTHON_LATEST=$(curl -s 'https://endoflife.date/api/python.json' | \
+            jq -r '.[0].latest')
           
           echo "go-latest=$GO_LATEST" >> $GITHUB_OUTPUT
           echo "node-latest=$NODE_LATEST" >> $GITHUB_OUTPUT
