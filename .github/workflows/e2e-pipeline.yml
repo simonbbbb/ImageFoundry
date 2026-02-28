@@ -13,6 +13,7 @@ permissions:
   contents: read
   packages: write
   attestations: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io

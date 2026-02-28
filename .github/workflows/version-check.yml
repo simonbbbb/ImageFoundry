@@ -39,7 +39,7 @@ jobs:
         id: latest
         run: |
           # Get latest Go version
-          GO_LATEST=$(curl -s https://go.dev/VERSION?text=text | head -1 | sed 's/go//')
+          GO_LATEST=$(curl -s 'https://go.dev/dl/?mode=json' | jq -r '.[0].version' | sed 's/go//')
           
           # Get latest Node.js LTS version
           NODE_LATEST=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
@@ -64,6 +64,14 @@ jobs:
           echo "Go: $GO_LATEST"
           echo "Node.js: $NODE_LATEST"
           echo "Python: $PYTHON_LATEST"
+
+      - name: Ensure labels exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for label in version-update go nodejs python enhancement; do
+            gh label create "$label" --repo ${{ github.repository }} --force || true
+          done
 
       - name: Check for updates and create issues
         env:
