@@ -2,8 +2,8 @@ name: Nightly Security Scan
 
 on:
   schedule:
-    # Run at 02:00 UTC every day
-    - cron: '0 2 * * *'
+    # Run weekly on Mondays at 02:00 UTC
+    - cron: '0 2 * * 1'
   workflow_dispatch:
 
 permissions:
