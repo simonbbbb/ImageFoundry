@@ -148,6 +148,7 @@ jobs:
               --platform linux/amd64 \
               --file templates/base/${base}.Dockerfile \
               --build-arg GO_VERSION=${{ steps.go-version.outputs.go-version }} \
+              --build-arg TARGETARCH=amd64 \
               --tag sbom:${base} \
               --load .
           done
