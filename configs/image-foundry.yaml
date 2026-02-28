@@ -1,15 +1,15 @@
 name: ImageFoundry
 version: "0.1.0"
 description: "A powerful, extensible container image builder with E2E CI/CD, security scanning, and compliance checks"
-author: "Your Name"
+author: "Balazs Simon"
 license: "MIT"
 
 # Image configuration
 image:
-  name: "my-custom-image"
-  tag: "latest"
+  name: "imagefoundry"
+  tag: "0.1.0"
   registry: "ghcr.io"
-  namespace: "myorg"
+  namespace: "simonbbbb"
 
 # Base template selection
 base:
@@ -53,13 +53,13 @@ tools:
     docker:
       install: true
     kubectl:
-      version: "1.29"
+      version: "1.35.1"
       install: true
     helm:
-      version: "3.14"
+      version: "3.19.5"
       install: true
     terraform:
-      version: "1.7"
+      version: "1.14.6"
       install: false
 
   # Additional packages
@@ -93,6 +93,17 @@ security:
     standards:
       - "cis-docker"
       - "nist"
+      #- "cis-benchmark"
+      #- "nist-800-53"
+      #- "nist-800-190"
+      #- "pci-dss"
+      #- "soc2"
+      #- "iso-27001"
+      #- "gdpr"
+      #- "hipaa"
+      #- "fips-140-2"
+      #- "disa-stig"
+      #- "asvs-owasp"
 
   # SAST scanning
   sast:
