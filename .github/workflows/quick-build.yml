@@ -1,0 +1,171 @@
+name: Quick Build (Resource Optimized)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Build all images (overrides selective build)'
+        required: false
+        default: false
+        type: boolean
+      images:
+        description: 'Specific images to build (comma-separated)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: simonbbbb/imagefoundry
+
+jobs:
+  # Quick determination of what to build
+  quick-determine:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      build-count: ${{ steps.matrix.outputs.count }}
+      skip-reason: ${{ steps.matrix.outputs.skip-reason }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Determine quick build matrix
+        id: matrix
+        run: |
+          if [ "${{ github.event.inputs.build_all }}" = "true" ]; then
+            # Build all (but still optimized)
+            MATRIX=$(python3 scripts/build-selective.py --mode all)
+          elif [ -n "${{ github.event.inputs.images }}" ]; then
+            # Build specific images
+            IMAGES=$(echo "${{ github.event.inputs.images }}" | tr ',' ' ')
+            MATRIX=$(python3 scripts/build-selective.py --mode select --images $IMAGES)
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, build only changed images (most optimized)
+            MATRIX=$(python3 scripts/build-selective.py --mode changed)
+          else
+            # For pushes, build based on config
+            MATRIX=$(python3 scripts/build-selective.py --mode config)
+          fi
+          
+          # Check if matrix is empty
+          if echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); exit(0 if data.get('include') else 1)"; then
+            echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+            COUNT=$(echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data.get('include', [])))")
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
+            echo "Building $COUNT images"
+          else
+            echo "skip-reason=no_images" >> $GITHUB_OUTPUT
+            echo "No images to build - skipping"
+          fi
+
+  # Quick build (only amd64, limited parallelism)
+  quick-build:
+    runs-on: ubuntu-latest
+    needs: quick-determine
+    if: needs.quick-determine.outputs.build-count > 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1  # Very conservative to save resources
+      matrix:
+        include: ${{ fromJson(needs.quick-determine.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Go version from config
+        id: go-version
+        run: |
+          pip install pyyaml
+          python3 -c "import yaml; config=yaml.safe_load(open('configs/image-foundry.yaml')); go_version=config['tools']['languages']['go']['version']; print(f'go-version={go_version}'); print(f'Using Go version: {go_version}')" >> $GITHUB_OUTPUT
+
+      - name: Build image (no push for PRs)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: templates/base/${{ matrix.base }}.Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.base }}-${{ matrix.arch }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GO_VERSION=${{ steps.go-version.outputs.go-version }}
+            TARGETARCH=${{ matrix.arch }}
+
+  # Quick security scan (only on built images)
+  quick-security:
+    runs-on: ubuntu-latest
+    needs: quick-build
+    if: needs.quick-determine.outputs.build-count > 0
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.quick-determine.outputs.matrix) }}
+        # Only scan amd64 to save resources
+        arch: [amd64]
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.base }}-${{ matrix.arch }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Summary
+  build-summary:
+    runs-on: ubuntu-latest
+    needs: [quick-determine, quick-build]
+    if: always()
+    steps:
+      - name: Build Summary
+        run: |
+          echo "## Quick Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Images to build**: ${{ needs.quick-determine.outputs.build-count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build status**: ${{ needs.quick-build.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.quick-determine.outputs.skip-reason }}" = "no_images" ]; then
+            echo "- **Reason**: No images needed building" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Resource Optimization" >> $GITHUB_STEP_SUMMARY
+          echo "- Limited to 1 parallel build" >> $GITHUB_STEP_SUMMARY
+          echo "- Only amd64 for non-critical builds" >> $GITHUB_STEP_SUMMARY
+          echo "- Selective based on changes" >> $GITHUB_STEP_SUMMARY

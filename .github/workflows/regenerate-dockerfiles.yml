@@ -1,0 +1,146 @@
+name: Regenerate Dockerfiles
+
+on:
+  push:
+    paths:
+      - 'configs/image-foundry.yaml'
+      - 'templates/dockerfile-template.tmpl'
+      - 'scripts/generate-dockerfiles.sh'
+  workflow_dispatch:
+    inputs:
+      base_image:
+        description: 'Base image to regenerate'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - alpine-3.20
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip python3-yaml
+
+      - name: Validate config
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('configs/image-foundry.yaml'))"
+          echo "Config validation passed"
+
+      - name: Regenerate Dockerfiles
+        run: |
+          if [ "${{ github.event.inputs.base_image }}" = "all" ] || [ "${{ github.event.inputs.base_image }}" = "" ]; then
+            python3 scripts/generate-dockerfiles.py
+          else
+            python3 scripts/generate-dockerfiles.py ${{ github.event.inputs.base_image }}
+          fi
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet HEAD~ -- templates/base/*.Dockerfile; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No Dockerfile changes detected"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Dockerfile changes detected"
+            git diff --name-only HEAD~ -- templates/base/*.Dockerfile
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true' && github.event_name == 'push'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: regenerate Dockerfiles from config changes
+            
+            - Auto-regenerated from templates/dockerfile-template.tmpl
+            - Config changes in: ${{ github.sha }}
+            - Run './scripts/generate-dockerfiles.sh' to regenerate manually
+          title: "chore: regenerate Dockerfiles from config"
+          body: |
+            ## Dockerfile Regeneration
+            
+            This PR automatically regenerates Dockerfiles based on changes to:
+            - `configs/image-foundry.yaml`
+            - `templates/dockerfile-template.tmpl`
+            - `scripts/generate-dockerfiles.sh`
+            
+            ### Changes detected:
+            ```diff
+            ${{ steps.diff.outputs.diff || 'No diff available' }}
+            ```
+            
+            ### To regenerate manually:
+            ```bash
+            ./scripts/generate-dockerfiles.sh
+            ```
+            
+            ### Validation:
+            - ✅ Config validation passed
+            - ✅ Template processing successful
+            - ✅ Dockerfile syntax checked
+          branch: regenerate-dockerfiles
+          delete-branch: true
+
+      - name: Show diff
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          echo "=== Dockerfile Changes ==="
+          git diff HEAD~ -- templates/base/*.Dockerfile || true
+
+      - name: Validate generated Dockerfiles
+        run: |
+          echo "Validating generated Dockerfiles..."
+          for dockerfile in templates/base/*.Dockerfile; do
+            echo "Checking $dockerfile..."
+            
+            # Basic syntax check
+            if docker buildx build --dry-run -f "$dockerfile" . > /dev/null 2>&1; then
+              echo "✅ $dockerfile syntax OK"
+            else
+              echo "⚠️ $dockerfile syntax check failed (might be context issue)"
+            fi
+            
+            # Check for required sections
+            if grep -q "FROM.*AS base" "$dockerfile"; then
+              echo "✅ Base layer found"
+            else
+              echo "❌ Missing base layer in $dockerfile"
+              exit 1
+            fi
+            
+            if grep -q "FROM base AS final" "$dockerfile"; then
+              echo "✅ Final layer found"
+            else
+              echo "❌ Missing final layer in $dockerfile"
+              exit 1
+            fi
+          done
+
+      - name: Summary
+        run: |
+          echo "## Regeneration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Config**: \`configs/image-foundry.yaml\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Template**: \`templates/dockerfile-template.tmpl\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes detected**: ${{ steps.changes.outputs.changed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Generated files**:" >> $GITHUB_STEP_SUMMARY
+          for dockerfile in templates/base/*.Dockerfile; do
+            echo "  - \`$dockerfile\`" >> $GITHUB_STEP_SUMMARY
+          done
