@@ -47,10 +47,10 @@ jobs:
             sed 's/v//' | \
             cut -d'.' -f1)
           
-          # Get latest Python version
-          PYTHON_LATEST=$(curl -s https://api.github.com/repos/python/cpython/releases | \
-            jq -r '[.[] | select(.prerelease == false and (.tag_name | startswith("v")))] | .[0].tag_name' | \
-            sed 's/v//')
+          # Get latest Python stable version
+          PYTHON_LATEST=$(curl -s 'https://www.python.org/api/v2/downloads/release/?is_published=true&pre_release=false&limit=1' | \
+            jq -r '.results[0].name' | \
+            grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           
           echo "go-latest=$GO_LATEST" >> $GITHUB_OUTPUT
           echo "node-latest=$NODE_LATEST" >> $GITHUB_OUTPUT
