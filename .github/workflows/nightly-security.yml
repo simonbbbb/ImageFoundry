@@ -56,7 +56,6 @@ jobs:
           tags: nightly-scan:${{ matrix.base }}
           build-args: |
             GO_VERSION=${{ steps.go-version.outputs.go-version }}
-            TARGETARCH=amd64
           # No cache to ensure fresh packages
           no-cache: true
 

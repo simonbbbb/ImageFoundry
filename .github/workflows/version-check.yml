@@ -41,20 +41,16 @@ jobs:
           # Get latest Go version
           GO_LATEST=$(curl -s 'https://go.dev/dl/?mode=json' | jq -r '.[0].version' | sed 's/go//')
           
-          # Get latest Node.js LTS version
-          NODE_LATEST=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
-            jq -r '.[] | select(.tag_name | startswith("v") and .prerelease == false) | .tag_name' | \
-            grep -E '^v[0-9]+\.[0-9]+' | \
+          # Get latest Node.js LTS major version
+          NODE_LATEST=$(curl -s https://nodejs.org/dist/index.json | \
+            jq -r '[.[] | select(.lts != false)] | .[0].version' | \
             sed 's/v//' | \
-            sort -V | \
-            tail -1)
+            cut -d'.' -f1)
           
           # Get latest Python version
           PYTHON_LATEST=$(curl -s https://api.github.com/repos/python/cpython/releases | \
-            jq -r '.[] | select(.tag_name | startswith("v") and .prerelease == false) | .tag_name' | \
-            sed 's/v//' | \
-            sort -V | \
-            tail -1)
+            jq -r '[.[] | select(.prerelease == false and (.tag_name | startswith("v")))] | .[0].tag_name' | \
+            sed 's/v//')
           
           echo "go-latest=$GO_LATEST" >> $GITHUB_OUTPUT
           echo "node-latest=$NODE_LATEST" >> $GITHUB_OUTPUT
