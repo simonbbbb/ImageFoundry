@@ -523,7 +523,7 @@ func runCommand(cmd string) error {
 		args = parts[1:]
 	}
 
-	//nolint:gosec // command comes from config, not user input
+	// #nosec G204 // command comes from config, not user input
 	c := exec.Command(parts[0], args...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

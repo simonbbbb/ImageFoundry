@@ -571,3 +571,4 @@ jobs:
         with:
           name: release-notes
           path: release-notes.md
+          if-no-files-found: warn
