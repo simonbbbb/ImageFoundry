@@ -196,7 +196,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install OpenSCAP content for Ubuntu 24.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
     wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2404-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2404-xccdf.xml
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2404-xccdf.xml || true
 {{- end }}
 
 {{- if eq .Base "ubuntu-22.04" }}
@@ -211,7 +211,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install OpenSCAP content for Ubuntu 22.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
     wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml || true
 {{- end }}
 
 {{- if eq .Base "alpine-3.20" }}

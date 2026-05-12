@@ -100,7 +100,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install OpenSCAP content for Ubuntu 22.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
     wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml || true
 
 
 # Install OPA (Open Policy Agent)
@@ -182,13 +182,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-22.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:51:36Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:55:54Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="3d6b240"
+LABEL org.opencontainers.image.revision="dabf508"
 LABEL org.opencontainers.image.base.name="ubuntu:22.04"
 
 # Switch to non-root user
