@@ -189,7 +189,7 @@ def main():
         # Build only images affected by changes
         changed_files = get_changed_files()
         if not changed_files:
-            print('{"images": [], "reason": "no_changes"}')
+            print('{"include": [], "reason": "no_changes"}')
             return
         
         affected = determine_affected_images(changed_files)
@@ -219,7 +219,7 @@ def main():
         images_to_build = args.images or []
     
     if not images_to_build:
-        print('{"images": [], "reason": "no_images"}')
+        print('{"include": [], "reason": "no_images"}')
         return
     
     # Generate build matrix
