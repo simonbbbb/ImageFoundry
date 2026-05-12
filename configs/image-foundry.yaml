@@ -69,7 +69,6 @@ tools:
     - jq
     - git
     - vim
-    - htop
 
 # Security scanning configuration
 security:

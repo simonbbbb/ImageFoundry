@@ -7,7 +7,7 @@
 FROM ubuntu:24.04 AS base
 
 # Common environment variables
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 
 # Create non-root user
@@ -31,6 +31,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 
+# CIS 5.1: Remove setuid/setgid binaries to reduce privilege escalation risk
+RUN find / -perm /6000 -type f ! -path /proc/* -exec chmod a-s {} \; 2>/dev/null || true
+
+# CIS 5.2: Remove world-writable permissions
+RUN find / -xdev -type d -perm 0002 ! -path /proc/* -exec chmod o-w {} + 2>/dev/null || true
 
 # Layer for Go installation
 FROM base AS go-layer
@@ -56,8 +61,6 @@ ENV GOBIN=$GOPATH/bin
 
 
 
-
-
 # Layer for security tools
 FROM base AS security-layer
 ARG TARGETARCH
@@ -66,7 +69,6 @@ ARG TARGETARCH
 RUN curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" > /etc/apt/sources.list.d/trivy.list && \
     apt-get update && apt-get install -y trivy && rm -rf /var/lib/apt/lists/*
-
 
 
 # Install Cosign
@@ -86,9 +88,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | 
 FROM base AS compliance-layer
 ARG TARGETARCH
 
-
-
-# Install OpenSCAP for Ubuntu 22.04
+# Install OpenSCAP for Ubuntu 24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openscap-scanner \
     scap-security-guide \
@@ -96,10 +96,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Install OpenSCAP content for Ubuntu 22.04
+# Install OpenSCAP content for Ubuntu 24.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
-    wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml
+    wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2404-xccdf.xml \
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2404-xccdf.xml
 
 
 
@@ -111,7 +111,7 @@ RUN OPA_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/opa/rel
 # Create compliance policies directory
 RUN mkdir -p /opt/compliance/policies /opt/compliance/reports
 
-# Copy default compliance policies
+# Copy compliance policies
 COPY compliance/ /opt/compliance/policies/
 
 # Layer for DevOps tools
@@ -122,7 +122,6 @@ ARG TARGETARCH
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli && rm -rf /var/lib/apt/lists/*
-
 
 
 # Install kubectl
@@ -148,7 +147,6 @@ RUN HELM_VERSION=3.19.5 && \
     rm -rf /tmp/helm.tar.gz /tmp/linux-${HELM_ARCH}
 
 
-
 # Final assembly
 FROM base AS final
 
@@ -157,15 +155,14 @@ COPY --from=go-layer /usr/local/go /usr/local/go
 COPY --from=go-layer /usr/local/bin/go* /usr/local/bin/
 
 
-
 COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/trivy
-
 
 COPY --from=security-layer /usr/local/bin/cosign /usr/local/bin/cosign
 
 COPY --from=security-layer /usr/local/bin/syft /usr/local/bin/syft
 
-
+COPY --from=compliance-layer /usr/local/bin/opa /usr/local/bin/opa
+COPY --from=compliance-layer /opt/compliance /opt/compliance
 
 COPY --from=devops-layer /usr/local/bin/kubectl /usr/local/bin/kubectl
 
@@ -174,21 +171,24 @@ COPY --from=devops-layer /usr/local/bin/helm /usr/local/bin/helm
 COPY --from=devops-layer /usr/bin/docker /usr/bin/docker
 
 
-
 # Additional packages from config
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y vim && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y htop && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl wget jq git vim && rm -rf /var/lib/apt/lists/* && apt-get clean
+
+# CIS 4.6: HEALTHCHECK instruction
+HEALTHCHECK NONE
 
 # Labels
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-24.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
-LABEL org.opencontainers.image.version="1.26.0"
-LABEL org.opencontainers.image.created="2026-02-28T13:22:51.581237Z"
+LABEL org.opencontainers.image.version="0.1.0"
+LABEL org.opencontainers.image.created="2026-05-12T19:01:57Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.authors="ImageFoundry Team"
+LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.revision="7bcfa49"
+LABEL org.opencontainers.image.base.name="ubuntu:24.04"
 
 # Switch to non-root user
 USER foundry

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -166,6 +167,9 @@ type AttestationConfig struct {
 	SBOMAttestation bool `yaml:"sbom_attestation" json:"sbom_attestation"`
 }
 
+// Version is set at build time via -ldflags
+var Version = "dev"
+
 var (
 	cfgFile string
 	config  Config
@@ -196,10 +200,7 @@ func init() {
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag
-	} else {
-		// Search for config in current directory
+	if cfgFile == "" {
 		cfgFile = "image-foundry.yaml"
 	}
 
@@ -377,7 +378,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("ImageFoundry v0.1.0")
+		fmt.Printf("ImageFoundry v%s\n", Version)
 		fmt.Println("A powerful container image builder with E2E CI/CD")
 	},
 }
@@ -511,9 +512,20 @@ func buildImage(arch string) error {
 }
 
 func runCommand(cmd string) error {
-	// Simplified - would use exec.Command in real implementation
-	fmt.Printf("Executing: %s\n", cmd)
-	return nil
+	parts := strings.Fields(cmd)
+	if len(parts) == 0 {
+		return fmt.Errorf("empty command")
+	}
+
+	var args []string
+	if len(parts) > 1 {
+		args = parts[1:]
+	}
+
+	c := exec.Command(parts[0], args...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }
 
 func runStructureTests() error {

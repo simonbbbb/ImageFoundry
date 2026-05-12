@@ -7,18 +7,16 @@
 FROM alpine:3.20 AS base
 
 # Common environment variables
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 
 # Create non-root user
-RUN groupadd -r foundry && useradd -r -g foundry -m -s /bin/bash foundry
+RUN addgroup -S foundry && adduser -S -G foundry -h /home/foundry -s /bin/bash foundry
 
 # Set working directory
 WORKDIR /workspace
 
 # Change ownership
 RUN chown -R foundry:foundry /workspace
-
 
 
 # Alpine-specific base setup
@@ -29,6 +27,12 @@ RUN apk add --no-cache \
     jq \
     git \
     bash
+
+# CIS 5.1: Remove setuid/setgid binaries to reduce privilege escalation risk
+RUN find / -perm /6000 -type f ! -path /proc/* -exec chmod a-s {} \; 2>/dev/null || true
+
+# CIS 5.2: Remove world-writable permissions
+RUN find / -xdev -type d -perm 0002 ! -path /proc/* -exec chmod o-w {} + 2>/dev/null || true
 
 # Layer for Go installation
 FROM base AS go-layer
@@ -54,12 +58,9 @@ ENV GOBIN=$GOPATH/bin
 
 
 
-
-
 # Layer for security tools
 FROM base AS security-layer
 ARG TARGETARCH
-
 
 
 # Install Trivy
@@ -84,19 +85,6 @@ ARG TARGETARCH
 
 
 
-# Install OpenSCAP for Ubuntu 22.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openscap-scanner \
-    scap-security-guide \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Install OpenSCAP content for Ubuntu 22.04
-RUN mkdir -p /usr/share/xml/scap/ssg/content && \
-    wget -O /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-ubuntu2204-xccdf.xml
-
 # Install OpenSCAP for Alpine
 RUN apk add --no-cache \
     openscap \
@@ -118,13 +106,12 @@ RUN OPA_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/opa/rel
 # Create compliance policies directory
 RUN mkdir -p /opt/compliance/policies /opt/compliance/reports
 
-# Copy default compliance policies
+# Copy compliance policies
 COPY compliance/ /opt/compliance/policies/
 
 # Layer for DevOps tools
 FROM base AS devops-layer
 ARG TARGETARCH
-
 
 
 # Install Docker CLI
@@ -153,14 +140,12 @@ RUN HELM_VERSION=3.19.5 && \
     rm -rf /tmp/helm.tar.gz /tmp/linux-${HELM_ARCH}
 
 
-
 # Final assembly
 FROM base AS final
 
 # Copy tools from layers if they were built
 COPY --from=go-layer /usr/local/go /usr/local/go
 COPY --from=go-layer /usr/local/bin/go* /usr/local/bin/
-
 
 
 COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/trivy
@@ -170,7 +155,8 @@ COPY --from=security-layer /usr/local/bin/cosign /usr/local/bin/cosign
 
 COPY --from=security-layer /usr/local/bin/syft /usr/local/bin/syft
 
-
+COPY --from=compliance-layer /usr/local/bin/opa /usr/local/bin/opa
+COPY --from=compliance-layer /opt/compliance /opt/compliance
 
 COPY --from=devops-layer /usr/local/bin/kubectl /usr/local/bin/kubectl
 
@@ -178,22 +164,24 @@ COPY --from=devops-layer /usr/local/bin/helm /usr/local/bin/helm
 
 
 
-
-
 # Additional packages from config
-RUN apk add --no-cache curl
-RUN apk add --no-cache wget
-RUN apk add --no-cache jq
-RUN apk add --no-cache git
-RUN apk add --no-cache vim
-RUN apk add --no-cache htop
+RUN apk add --no-cache curl wget jq git vim
+
+# CIS 4.6: HEALTHCHECK instruction
+HEALTHCHECK NONE
 
 # Labels
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (alpine-3.20)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
-LABEL org.opencontainers.image.version="1.26.0"
-LABEL org.opencontainers.image.created="2026-02-28T13:22:51.584633Z"
+LABEL org.opencontainers.image.version="0.1.0"
+LABEL org.opencontainers.image.created="2026-05-12T19:01:57Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.authors="ImageFoundry Team"
+LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.revision="7bcfa49"
+LABEL org.opencontainers.image.base.name="alpine:3.20"
 
 # Switch to non-root user
 USER foundry

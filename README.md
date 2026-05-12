@@ -1,63 +1,151 @@
-# ImageFoundry 🔨
+[![E2E Pipeline](https://github.com/simonbbbb/ImageFoundry/actions/workflows/e2e-pipeline.yml/badge.svg)](https://github.com/simonbbbb/ImageFoundry/actions/workflows/e2e-pipeline.yml)
+[![PR Check](https://github.com/simonbbbb/ImageFoundry/actions/workflows/pr-check.yml/badge.svg)](https://github.com/simonbbbb/ImageFoundry/actions/workflows/pr-check.yml)
+[![Release](https://img.shields.io/github/v/release/simonbbbb/ImageFoundry?style=flat-square)](https://github.com/simonbbbb/ImageFoundry/releases)
+[![License](https://img.shields.io/github/license/simonbbbb/ImageFoundry?style=flat-square)](LICENSE)
+[![OPA](https://img.shields.io/badge/opa-policies-purple?style=flat-square)](compliance/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/simonbbbb/ImageFoundry?style=flat-square)](go.mod)
+[![Docker](https://img.shields.io/badge/multi--arch-amd64%20%7C%20arm64-blue?style=flat-square)](https://github.com/simonbbbb/ImageFoundry/pkgs/container/imagefoundry)
 
-A powerful, extensible container image builder with full E2E CI/CD pipeline, security scanning, compliance checks, and multi-architecture support.
+---
 
-[![E2E Pipeline](https://github.com/yourorg/imagefoundry/actions/workflows/e2e-pipeline.yml/badge.svg)](https://github.com/yourorg/imagefoundry/actions/workflows/e2e-pipeline.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**Type `foundry build`** — you get a compliant, multi-arch container image with security scanning, OPA policy enforcement, and a full CI/CD pipeline.
 
-## Features ✨
+- **OPA-governed**: Rego policies enforce CIS Docker Benchmark, NIST, and OCI standards
+- **Multi-architecture**: amd64, arm64, arm/v7 from a single YAML config
+- **Security built in**: Trivy, CodeQL, SAST, SBOM, and Cosign signing
+- **Template driven**: Declarative tool layers for Go, Node.js, Python, kubectl, Helm, and more
+- **Pipeline ready**: GitHub Actions workflows with selective builds and parallel matrices
 
-- **Multi-Architecture Support** - Build for amd64, arm64, and more
-- **Template-Based** - Pre-configured templates for Ubuntu, Alpine, and more
-- **Declarative Configuration** - Simple YAML-based configuration
-- **Security Scanning** - Integrated Trivy, CodeQL, SAST scanning
-- **Compliance Checking** - CIS Docker Benchmark, OpenSCAP integration
-- **SBOM Generation** - Automatic Software Bill of Materials
-- **Image Signing** - Cosign keyless signing support
-- **Performance Testing** - Built-in benchmark and optimization tools
-- **Matrix CI/CD** - GitHub Actions with parallel job execution
-- **Extensible** - Easy to add custom tools and templates
+---
 
-## Quick Start 🚀
+## Install
 
-### Installation
+| Platform | Command |
+|----------|---------|
+| **Go** | `go install github.com/simonbbbb/imagefoundry/cmd/foundry@latest` |
+| **Docker** | `docker pull ghcr.io/simonbbbb/imagefoundry:latest` |
+| **Source** | `git clone https://github.com/simonbbbb/imagefoundry.git && make build` |
 
-```bash
-# Clone the repository
-git clone https://github.com/simonbbbb/imagefoundry.git
-cd imagefoundry
+> Note: The CLI (`foundry`) requires Go 1.22+. Docker builds require Docker Buildx.
 
-# Build the CLI tool
-go build -o foundry ./cmd/foundry
+---
 
-# Or install directly
-go install github.com/simonbbbb/imagefoundry/cmd/foundry@latest
-```
-
-### Initialize a New Project
+## Quick start
 
 ```bash
+# Initialize a new project
 foundry init
+
+# Edit your configuration
+vim image-foundry.yaml
+
+# Validate and build
+foundry validate
+foundry build
+
+# Run security and compliance scans
+foundry scan
+
+# Run tests
+foundry test
 ```
 
-This creates a new project structure with example configuration.
+That's it. Four commands from nothing to a scanned, compliant image.
 
-### Configuration
+---
 
-Edit `image-foundry.yaml`:
+## What you get
+
+| Artifact | Description |
+|----------|-------------|
+| `image-foundry.yaml` | Declarative image configuration |
+| `templates/base/*.Dockerfile` | Generated multi-stage Dockerfiles |
+| GHCR image `ghcr.io/simonbbbb/imagefoundry` | Built, signed, and attested |
+| SBOM (SPDX / CycloneDX) | Software Bill of Materials |
+| Trivy SARIF report | Vulnerability scan results |
+| OPA compliance report | Policy evaluation results |
+
+---
+
+## Compliance
+
+ImageFoundry embeds **OPA (Open Policy Agent)** and evaluates Rego policies at both build and scan time.
+
+```
+Write Rego policies → Build image with OPA → Evaluate at scan time → Pass or fail
+```
+
+### Active policies
+
+| Policy | Standard | Rule |
+|--------|----------|------|
+| Non-root user | CIS 4.1 | Container must not run as root |
+| HEALTHCHECK | CIS 4.6 | HEALTHCHECK instruction required |
+| No privileged mode | CIS | Container must not run privileged |
+| No dangerous capabilities | CIS | SYS_ADMIN, NET_ADMIN, etc. blocked |
+| Read-only rootfs | NIST | Root filesystem should be read-only |
+| Required OCI labels | OCI | title, description, version, source required |
+| No `latest` tag | NIST | Production images must pin a version |
+| No secrets in env | NIST | Passwords, tokens, keys not allowed |
+
+Rego policies live in [`compliance/`](compliance/) and are built directly into the image.
+
+---
+
+## Features
+
+### Architecture
+
+| Feature | Support |
+|---------|---------|
+| amd64 | ✅ |
+| arm64 | ✅ |
+| arm/v7 | ✅ (Alpine only) |
+| Multi-arch manifest | ✅ (Docker Buildx) |
+
+### Languages & runtimes
+
+| Tool | Default version | Config path |
+|------|----------------|-------------|
+| Go | 1.26 | `tools.languages.go.version` |
+| Node.js | 24 | `tools.languages.nodejs.version` |
+| Python | 3.14 | `tools.languages.python.version` |
+
+### Security
+
+| Tool | Purpose | In image |
+|------|---------|----------|
+| Trivy | Vulnerability scanner | ✅ |
+| Cosign | Container signing | ✅ |
+| Syft | SBOM generation | ✅ |
+| OPA | Policy evaluation | ✅ |
+
+### DevOps
+
+| Tool | Default version | In image |
+|------|----------------|----------|
+| kubectl | 1.35 | ✅ |
+| Helm | 3.19 | ✅ |
+| Docker CLI | latest | ✅ |
+
+---
+
+## Configuration
+
+Minimal `image-foundry.yaml`:
 
 ```yaml
 name: my-project
 version: "1.0.0"
 
 image:
-  name: "my-custom-image"
+  name: "my-image"
   tag: "latest"
   registry: "ghcr.io"
   namespace: "myorg"
 
 base:
-  template: "ubuntu-24.04"  # or ubuntu-22.04, alpine-3.20
+  template: "ubuntu-24.04"
   architecture:
     - amd64
     - arm64
@@ -65,314 +153,102 @@ base:
 tools:
   languages:
     go:
-      version: "1.22"
+      version: "1.26"
       install: true
-    nodejs:
-      version: "20"
-      install: false
-  
   security:
     trivy:
       install: true
-    cosign:
-      install: true
-  
-  devops:
-    kubectl:
-      version: "1.29"
-      install: true
-    helm:
-      version: "3.14"
-      install: true
+  packages:
+    - curl
+    - git
 
 security:
   trivy:
     enabled: true
     severity: "HIGH,CRITICAL"
-  
-  codeql:
-    enabled: true
-    languages:
-      - go
-  
   compliance:
     enabled: true
     standards:
       - "cis-docker"
 ```
 
-### Build
+See [`configs/image-foundry.yaml`](configs/image-foundry.yaml) for the full reference.
 
-```bash
-# Validate configuration
-foundry validate
+---
 
-# Build images
-foundry build
+## CI/CD
 
-# Run tests
-foundry test
+ImageFoundry ships with ready-to-use GitHub Actions workflows:
 
-# Run security scans
-foundry scan
-```
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `e2e-pipeline.yml` | Push / PR / tag | Full build, scan, sign, attest |
+| `quick-build.yml` | Push / PR | Lightweight build (1 parallel, amd64) |
+| `pr-check.yml` | PR | Validate, lint, smoke test |
+| `nightly-security.yml` | Schedule (weekly) | Full vulnerability rescan |
+| `regenerate-dockerfiles.yml` | Config change | Auto-update generated Dockerfiles |
+| `version-check.yml` | Schedule (weekly) | Check for tool version updates |
 
-## Project Structure 📁
+The pipeline uses **selective builds** — only images affected by changed files are rebuilt, saving CI resources. See [`scripts/build-selective.py`](scripts/build-selective.py).
+
+---
+
+## CLI reference
+
+| Command | Description |
+|---------|-------------|
+| `foundry init` | Initialize a new project |
+| `foundry validate` | Validate configuration and templates |
+| `foundry build` | Build images for all configured architectures |
+| `foundry test` | Run structure, integration, and performance tests |
+| `foundry scan` | Run Trivy, OPA compliance, and SAST scans |
+| `foundry version` | Print version |
+
+---
+
+## Project structure
 
 ```
 imagefoundry/
-├── .github/workflows/       # CI/CD workflows
-├── cmd/foundry/             # CLI tool source
-├── configs/                 # Example configurations
-├── docs/                    # Documentation
-├── examples/                # Example projects
-├── scripts/                 # Helper scripts
-│   ├── compliance-check.sh
-│   ├── integration-test.sh
-│   └── performance-test.sh
+├── compliance/              # OPA Rego policies
+│   ├── compliance_utils.rego
+│   ├── container_security.rego
+│   └── image_metadata.rego
+├── cmd/foundry/             # CLI source
+├── configs/                 # Reference configuration
+├── docs/                    # Documentation & landing page
+├── scripts/                 # Build & CI helper scripts
 ├── templates/               # Dockerfile templates
-│   ├── base/               # Base OS templates
-│   │   ├── ubuntu-24.04.Dockerfile
-│   │   ├── ubuntu-22.04.Dockerfile
-│   │   └── alpine-3.20.Dockerfile
-│   └── agents/             # CI/CD agent templates
-├── tests/                   # Test configurations
-│   └── structure-tests.yaml
-├── go.mod
-├── go.sum
-└── README.md
+│   ├── base/               # OS base images
+│   └── agents/             # CI/CD agent runners
+├── tests/                   # Container structure tests
+└── .github/workflows/       # CI/CD pipelines
 ```
 
-## Available Templates 🐳
+---
 
-### Base Images
+## Documentation
 
-| Template | OS | Size | Architectures |
-|----------|-----|------|---------------|
-| `ubuntu-24.04` | Ubuntu 24.04 LTS | ~200MB | amd64, arm64 |
-| `ubuntu-22.04` | Ubuntu 22.04 LTS | ~180MB | amd64, arm64 |
-| `alpine-3.20` | Alpine Linux 3.20 | ~50MB | amd64, arm64, arm/v7 |
-| `debian-12` | Debian 12 (Bookworm) | ~150MB | amd64, arm64 |
+- [Dockerfile templating](docs/dockerfile-templating.md) — Template system reference
+- [Usage guide](docs/usage.md) — Extended documentation
+- [Resource optimization](docs/resource-optimization.md) — CI cost optimization
 
-### Pre-configured Tools
+---
 
-**Languages & Runtimes:**
-- Go (1.22, 1.21)
-- Node.js (20, 18)
-- Python (3.12, 3.11, 3.10)
-- Rust (latest)
-- .NET (8.0, 6.0)
-- Java (21, 17)
-
-**Security Tools:**
-- Trivy - Vulnerability scanner
-- Cosign - Container signing
-- Syft - SBOM generator
-- Grype - Vulnerability scanner
-- Falco - Runtime security
-
-**DevOps Tools:**
-- kubectl (1.29, 1.28)
-- Helm (3.14, 3.13)
-- Docker CLI
-- Terraform (1.7)
-- Pulumi (latest)
-- ArgoCD CLI
-
-## E2E Pipeline 🔒
-
-The GitHub Actions workflow includes:
-
-1. **Validation** - Config and Dockerfile syntax checks
-2. **Build Matrix** - Parallel multi-arch builds
-3. **Security Scanning:**
-   - Trivy vulnerability scan
-   - CodeQL analysis
-   - SAST (Semgrep, Gosec)
-4. **Compliance Checks:**
-   - CIS Docker Benchmark
-   - Custom security policies
-5. **Testing:**
-   - Container structure tests
-   - Integration tests
-   - Performance benchmarks
-6. **Signing & Attestation:**
-   - Cosign keyless signing
-   - SBOM attestation
-   - Provenance attestation
-
-## Security Scanning 🛡️
-
-### Trivy
-
-```yaml
-security:
-  trivy:
-    enabled: true
-    severity: "CRITICAL,HIGH"
-    exit_code: 1
-    ignore_unfixed: false
-```
-
-### CodeQL
-
-```yaml
-security:
-  codeql:
-    enabled: true
-    languages:
-      - go
-      - javascript
-      - python
-```
-
-### SAST Tools
-
-```yaml
-security:
-  sast:
-    enabled: true
-    tools:
-      - semgrep
-      - gosec
-      - bandit
-```
-
-## Compliance Checking 📋
-
-### CIS Docker Benchmark
-
-The pipeline automatically checks:
-- Container user configuration
-- HEALTHCHECK presence
-- Secret management
-- File permissions
-- Network policies
-
-### Custom Policies
-
-Add custom compliance scripts in `scripts/compliance-check.sh`.
-
-## Performance Testing ⚡
-
-Automated benchmarks include:
-- Image pull time
-- Container startup time
-- Image size analysis
-- Memory footprint
-- Layer count optimization
-- Concurrent startup performance
-
-## Configuration Reference 📖
-
-### Full Configuration Example
-
-See `configs/image-foundry.yaml` for a complete example.
-
-### Key Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `base.template` | Base OS template | `ubuntu-24.04` |
-| `base.architecture` | Target architectures | `[amd64]` |
-| `optimization.multi_stage` | Enable multi-stage builds | `true` |
-| `optimization.cache_layers` | Enable layer caching | `true` |
-| `output.sbom.enabled` | Generate SBOM | `true` |
-| `output.signing.enabled` | Sign images | `true` |
-
-## CLI Commands 🖥️
-
-```bash
-foundry init          # Initialize new project
-foundry validate      # Validate configuration
-foundry build         # Build images
-foundry test          # Run tests
-foundry scan          # Run security scans
-foundry version       # Show version
-```
-
-## CI/CD Integration 🔧
-
-### GitHub Actions
-
-The included workflow automatically:
-- Builds multi-arch images
-- Runs security scans
-- Performs compliance checks
-- Generates SBOMs
-- Signs images with Cosign
-
-### GitLab CI
-
-Example `.gitlab-ci.yml` included in examples.
-
-### Jenkins
-
-Pipeline script available in examples.
-
-## Customization 🔨
-
-### Adding Custom Tools
-
-1. Create a new layer in the Dockerfile template
-2. Add tool configuration to YAML schema
-3. Update CLI to handle the tool
-
-### Creating Custom Templates
-
-```dockerfile
-# templates/base/my-custom.Dockerfile
-FROM ubuntu:24.04
-
-# Your custom setup
-COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/
-```
-
-### Pre/Post Build Hooks
-
-```yaml
-custom:
-  pre_build: |
-    echo "Running pre-build tasks..."
-    # Your custom logic
-  
-  post_build: |
-    echo "Running post-build tasks..."
-    # Your custom logic
-```
-
-## Examples 📚
-
-See `examples/` directory for:
-- CI/CD agent images
-- Development environment images
-- Production-ready base images
-- Custom tool configurations
-
-## Contributing 🤝
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License 📄
+See the [issue templates](.github/ISSUE_TEMPLATE/) for bug reports and feature requests.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+---
 
-## Acknowledgments 🙏
+## License
 
-- [Trivy](https://github.com/aquasecurity/trivy) - Security scanner
-- [Cosign](https://github.com/sigstore/cosign) - Container signing
-- [Syft](https://github.com/anchore/syft) - SBOM generator
-- [Docker Buildx](https://github.com/docker/buildx) - Multi-arch builds
+MIT — see [LICENSE](LICENSE).
 
-## Roadmap 🗺️
-
-- [ ] Windows container support
-- [ ] Additional base images (RHEL, SLES)
-- [ ] Web UI for configuration
-- [ ] Integration with container registries (ECR, ACR, GCR)
-- [ ] Automated update notifications
-- [ ] Image diff visualization
+Built with 🔨 by [Simon Balazs](https://github.com/simonbbbb).

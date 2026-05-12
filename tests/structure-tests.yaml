@@ -81,6 +81,16 @@ commandTests:
     args: ["version"]
     expectedOutput: ["cosign:"]
 
+  # Security hardening tests
+  - name: "Non-root user at runtime"
+    command: "whoami"
+    expectedOutput: ["foundry"]
+
+  - name: "No setuid/setgid binaries"
+    command: "sh"
+    args: ["-c", "find / -perm /6000 -type f 2>/dev/null | wc -l"]
+    expectedOutput: ["0"]
+
 fileExistenceTests:
   # Check critical files exist
   - name: 'Root directory'
@@ -122,3 +132,12 @@ metadataTest:
   volumes: []
   cmd: ['/bin/bash']
   entrypoint: []
+  labels:
+    - key: 'org.opencontainers.image.version'
+      value: '.*'
+    - key: 'org.opencontainers.image.source'
+      value: '.*'
+    - key: 'org.opencontainers.image.licenses'
+      value: 'MIT'
+    - key: 'org.opencontainers.image.authors'
+      value: '.*'

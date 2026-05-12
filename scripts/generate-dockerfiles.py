@@ -1,246 +1,270 @@
 #!/usr/bin/env python3
-
 """
-Generate Dockerfiles from template and configuration
+Generate Dockerfiles from template and configuration.
+
+Processes the Go-template-style Dockerfile template with a proper
+stack-based conditional evaluator. Handles nested {{- if }}, {{- else }},
+{{- end }}, {{- range }}, and variable substitution.
 """
 
-import os
+import re
 import sys
-import yaml
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
-def read_config(config_file):
-    """Read configuration from YAML file"""
-    with open(config_file, 'r') as f:
+import yaml
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = PROJECT_ROOT / "configs" / "image-foundry.yaml"
+TEMPLATE_FILE = PROJECT_ROOT / "templates" / "dockerfile-template.tmpl"
+OUTPUT_DIR = PROJECT_ROOT / "templates" / "base"
+
+BASE_IMAGE_MAP = {
+    "ubuntu-24.04": "ubuntu:24.04",
+    "ubuntu-22.04": "ubuntu:22.04",
+    "alpine-3.20": "alpine:3.20",
+}
+
+
+def load_config():
+    with open(CONFIG_FILE) as f:
         return yaml.safe_load(f)
 
-def read_template(template_file):
-    """Read template file"""
-    with open(template_file, 'r') as f:
-        return f.read()
 
-def process_template(template_content, config, base):
-    """Process template with configuration"""
-    
-    # Base image mapping
-    base_images = {
-        'ubuntu-24.04': 'ubuntu:24.04',
-        'ubuntu-22.04': 'ubuntu:22.04',
-        'alpine-3.20': 'alpine:3.20'
-    }
-    
-    # Extract values from config
-    tools = config.get('tools', {})
-    languages = tools.get('languages', {})
-    security = tools.get('security', {})
-    devops = tools.get('devops', {})
-    compliance = config.get('compliance', {})
-    
-    # Template variables
-    variables = {
-        'Base': base,
-        'BaseImage': base_images.get(base, f'{base}:latest'),
-        'Arch': 'amd64',
-        'GoVersion': languages.get('go', {}).get('version', '1.22.0'),
-        'NodeVersion': languages.get('nodejs', {}).get('version', '20'),
-        'PythonVersion': languages.get('python', {}).get('version', '3.12'),
-        'KubectlVersion': devops.get('kubectl', {}).get('version', '1.29.0'),
-        'HelmVersion': devops.get('helm', {}).get('version', '3.14.0'),
-        'TerraformVersion': devops.get('terraform', {}).get('version', '1.7.0'),
-        'InstallNodeJS': 'true' if languages.get('nodejs', {}).get('install', False) else 'false',
-        'InstallPython': 'true' if languages.get('python', {}).get('install', False) else 'false',
-        'InstallTrivy': 'true' if security.get('trivy', {}).get('install', False) else 'false',
-        'InstallCosign': 'true' if security.get('cosign', {}).get('install', False) else 'false',
-        'InstallSyft': 'true' if security.get('syft', {}).get('install', False) else 'false',
-        'InstallDocker': 'true' if devops.get('docker', {}).get('install', False) else 'false',
-        'InstallKubectl': 'true' if devops.get('kubectl', {}).get('install', False) else 'false',
-        'InstallHelm': 'true' if devops.get('helm', {}).get('install', False) else 'false',
-        'InstallTerraform': 'true' if devops.get('terraform', {}).get('install', False) else 'false',
-        'InstallCompliance': 'true' if compliance.get('enabled', False) else 'false',
-        'Timestamp': datetime.utcnow().isoformat() + 'Z',
-        'AdditionalPackages': tools.get('packages', [])
-    }
-    
-    import re
-    
-    # Process the template
-    result = template_content
-    
-    # Replace simple variables first
-    for key, value in variables.items():
-        if key != 'AdditionalPackages':
-            result = result.replace(f'{{{{ .{key} }}}}', str(value))
-    
-    # Process Ubuntu base conditionals
-    if base in ['ubuntu-24.04', 'ubuntu-22.04']:
-        # Keep Ubuntu blocks
-        result = re.sub(
-            r'{{- if eq \.Base "ubuntu-24\.04" "ubuntu-22\.04" }}\n(.*?)\n{{- end }}',
-            r'\1',
-            result,
-            flags=re.DOTALL
-        )
-        result = re.sub(
-            r'{{- if eq \$\.Base "ubuntu-24\.04" "ubuntu-22\.04" }}\n(.*?)\n{{- end }}',
-            r'\1',
-            result,
-            flags=re.DOTALL
-        )
-        # Remove Alpine blocks
-        result = re.sub(
-            r'{{- if eq \.Base "alpine-3\.20" }}\n(.*?)\n{{- end }}',
-            '',
-            result,
-            flags=re.DOTALL
-        )
-        result = re.sub(
-            r'{{- if eq \$\.Base "alpine-3\.20" }}\n(.*?)\n{{- end }}',
-            '',
-            result,
-            flags=re.DOTALL
-        )
-    elif base == 'alpine-3.20':
-        # Keep Alpine blocks
-        result = re.sub(
-            r'{{- if eq \.Base "alpine-3\.20" }}\n(.*?)\n{{- end }}',
-            r'\1',
-            result,
-            flags=re.DOTALL
-        )
-        result = re.sub(
-            r'{{- if eq \$\.Base "alpine-3\.20" }}\n(.*?)\n{{- end }}',
-            r'\1',
-            result,
-            flags=re.DOTALL
-        )
-        # Remove Ubuntu blocks
-        result = re.sub(
-            r'{{- if eq \.Base "ubuntu-24\.04" "ubuntu-22\.04" }}\n(.*?)\n{{- end }}',
-            '',
-            result,
-            flags=re.DOTALL
-        )
-        result = re.sub(
-            r'{{- if eq \$\.Base "ubuntu-24\.04" "ubuntu-22\.04" }}\n(.*?)\n{{- end }}',
-            '',
-            result,
-            flags=re.DOTALL
-        )
-    
-    # Process tool installation conditionals
-    for tool_name, install_flag in variables.items():
-        if tool_name.startswith('Install'):
-            actual_tool = tool_name.replace('Install', '')
-            if install_flag == 'true':
-                # Keep the block
-                result = re.sub(
-                    f'{{{{- if \.{tool_name} }}}}\n(.*?)\n{{{{- end }}}}',
-                    r'\1',
-                    result,
-                    flags=re.DOTALL
-                )
-            else:
-                # Remove the block
-                result = re.sub(
-                    f'{{{{- if \.{tool_name} }}}}\n(.*?)\n{{{{- end }}}}',
-                    '',
-                    result,
-                    flags=re.DOTALL
-                )
-    
-    # Handle additional packages
-    packages_content = []
-    for pkg in variables['AdditionalPackages']:
-        if base in ['ubuntu-24.04', 'ubuntu-22.04']:
-            packages_content.append(f'RUN apt-get update && apt-get install -y {pkg} && rm -rf /var/lib/apt/lists/*')
-        elif base == 'alpine-3.20':
-            packages_content.append(f'RUN apk add --no-cache {pkg}')
-    
-    result = re.sub(
-        r'{{- range \.AdditionalPackages }}\n(.*?)\n{{- end }}',
-        '\n'.join(packages_content) if packages_content else '',
-        result,
-        flags=re.DOTALL
-    )
-    
-    # Remove any remaining conditional markers
-    result = re.sub(r'{{- if.*?}}\n?', '', result)
-    result = re.sub(r'{{- end }}\n?', '', result)
-    
-    return result
+def get_git_revision():
+    try:
+        import subprocess
+        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return ""
 
-def validate_dockerfile(dockerfile_path):
-    """Validate generated Dockerfile"""
-    with open(dockerfile_path, 'r') as f:
-        content = f.read()
-    
+
+def consolidate_packages(packages, base):
+    """Generate a single consolidated RUN command for packages."""
+    if not packages:
+        return ""
+    if base in ("ubuntu-24.04", "ubuntu-22.04"):
+        pkgs = " ".join(packages)
+        return f"RUN apt-get update && apt-get install -y --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/* && apt-get clean"
+    # Alpine
+    pkgs = " ".join(packages)
+    return f"RUN apk add --no-cache {pkgs}"
+
+
+def read_variables(config, base):
+    """Extract all template variables from config."""
+    tools = config.get("tools", {})
+    languages = tools.get("languages", {})
+    security_tools = tools.get("security", {})
+    devops = tools.get("devops", {})
+    security = config.get("security", {})
+
+    go = languages.get("go", {})
+    nodejs = languages.get("nodejs", {})
+    python_lang = languages.get("python", {})
+
+    return {
+        "Base": base,
+        "BaseImage": BASE_IMAGE_MAP[base],
+        "Arch": "amd64",
+        "Version": config.get("version", "0.1.0"),
+        "Revision": get_git_revision(),
+        "GoVersion": go.get("version", "1.26.0"),
+        "NodeVersion": nodejs.get("version", "24"),
+        "PythonVersion": python_lang.get("version", "3.14"),
+        "KubectlVersion": devops.get("kubectl", {}).get("version", "1.35.1"),
+        "HelmVersion": devops.get("helm", {}).get("version", "3.19.5"),
+        "TerraformVersion": devops.get("terraform", {}).get("version", "1.14.6"),
+        "InstallNodeJS": str(nodejs.get("install", False)).lower(),
+        "InstallPython": str(python_lang.get("install", False)).lower(),
+        "InstallTrivy": str(security_tools.get("trivy", {}).get("install", False)).lower(),
+        "InstallCosign": str(security_tools.get("cosign", {}).get("install", False)).lower(),
+        "InstallSyft": str(security_tools.get("syft", {}).get("install", False)).lower(),
+        "InstallCompliance": str(security.get("compliance", {}).get("enabled", False)).lower(),
+        "InstallDocker": str(devops.get("docker", {}).get("install", False)).lower(),
+        "InstallKubectl": str(devops.get("kubectl", {}).get("install", False)).lower(),
+        "InstallHelm": str(devops.get("helm", {}).get("install", False)).lower(),
+        "InstallTerraform": str(devops.get("terraform", {}).get("install", False)).lower(),
+        "Timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "AdditionalPackages": tools.get("packages", []),
+        "PackagesRun": consolidate_packages(tools.get("packages", []), base),
+    }
+
+
+def eval_condition(expr, vars):
+    """Evaluate a Go-template condition expression."""
+    expr = expr.strip()
+
+    for prefix in [r"\.", r"\$\."]:
+        m = re.match(r"^eq\s+" + prefix + r"(\w+)\s+(.+)$", expr)
+        if m:
+            values = re.findall(r'"([^"]*)"', m.group(2))
+            return str(vars.get(m.group(1), "")) in values
+
+        m = re.match(r"^" + prefix + r"(\w+)$", expr)
+        if m:
+            return str(vars.get(m.group(1), "false")).lower() == "true"
+
+    return True
+
+
+def process_template(template_path, vars):
+    """Process template with stack-based conditional evaluation."""
+    with open(template_path) as f:
+        lines = f.readlines()
+
+    output = []
+    # Main processing stack: (active_bool, cond_result_bool)
+    stack = []
+
+    # Range bookkeeping
+    in_range = False
+    range_depth = 0
+    range_items = []
+    range_body = []
+
+    for line in lines:
+        stripped = line.strip()
+
+        # --- Range start ---
+        if re.match(r"\{\{-\s*range\s+\.AdditionalPackages\s*\}\}", stripped):
+            in_range = True
+            range_depth = 0
+            range_items = list(vars.get("AdditionalPackages", []))
+            range_body = []
+            continue
+
+        # --- Inside range ---
+        if in_range:
+            if re.match(r"\{\{-\s*if\b", stripped):
+                range_depth += 1
+                range_body.append(line)
+                continue
+            if re.match(r"\{\{-\s*else\s*\}\}", stripped):
+                range_body.append(line)
+                continue
+            if re.match(r"\{\{-\s*end\s*\}\}", stripped):
+                if range_depth > 0:
+                    range_depth -= 1
+                    range_body.append(line)
+                    continue
+                # End of range: expand the body for each item
+                for item in range_items:
+                    rstack = []
+                    for rline in range_body:
+                        rs = rline.strip()
+                        mr = re.match(r"\{\{-\s*if\s+(.+?)\s*\}\}", rs)
+                        if mr:
+                            cond = eval_condition(mr.group(1), vars)
+                            pa = all(s[0] for s in rstack)
+                            rstack.append((pa and cond, cond))
+                            continue
+                        if re.match(r"\{\{-\s*else\s*\}\}", rs):
+                            if rstack:
+                                oa, oc = rstack.pop()
+                                pa = all(s[0] for s in rstack)
+                                rstack.append((pa and not oc, not oc))
+                            continue
+                        if re.match(r"\{\{-\s*end\s*\}\}", rs):
+                            if rstack:
+                                rstack.pop()
+                            continue
+                        if all(s[0] for s in rstack):
+                            out = rline.replace("{{ . }}", item)
+                            out = out.replace("{{$}}", item)
+                            out = re.sub(
+                                r"\{\{\s*\.(\w+)\s*\}\}",
+                                lambda m: str(vars.get(m.group(1), m.group(0))),
+                                out,
+                            )
+                            output.append(out)
+                in_range = False
+                range_items = []
+                range_body = []
+                continue
+            # Regular line inside range body
+            range_body.append(line)
+            continue
+
+        # ---- Main processing (not in range) ----
+
+        # If
+        mr = re.match(r"\{\{-\s*if\s+(.+?)\s*\}\}", stripped)
+        if mr:
+            cond = eval_condition(mr.group(1), vars)
+            active = all(s[0] for s in stack) and cond
+            stack.append((active, cond))
+            continue
+
+        # Else
+        if re.match(r"\{\{-\s*else\s*\}\}", stripped):
+            if stack:
+                old_a, old_c = stack.pop()
+                pa = all(s[0] for s in stack)
+                stack.append((pa and not old_c, not old_c))
+            continue
+
+        # End
+        if re.match(r"\{\{-\s*end\s*\}\}", stripped):
+            if stack:
+                stack.pop()
+            continue
+
+        # Variable substitution
+        processed = line
+        processed = re.sub(
+            r"\{\{\s*\.(\w+)\s*\}\}",
+            lambda m: str(vars.get(m.group(1), m.group(0))),
+            processed,
+        )
+        processed = processed.replace("{{ . }}", "")
+        processed = processed.replace("{{$}}", "")
+
+        # Output if all parent conditions active
+        if all(s[0] for s in stack):
+            output.append(processed)
+
+    return "".join(output)
+
+
+def validate(content, base):
     issues = []
-    
-    # Check for required sections
-    if 'FROM' not in content:
+    if "FROM" not in content:
         issues.append("Missing FROM instruction")
-    
-    if 'FROM base AS final' not in content:
-        issues.append("Missing final layer")
-    
-    # Check for syntax issues
-    if content.count('FROM') < 2:
-        issues.append("Expected multiple FROM instructions for multi-stage build")
-    
+    if "FROM base AS final" not in content:
+        issues.append("Missing final stage")
+    if content.count("FROM") < 2:
+        issues.append("Expected multi-stage build")
+    if content.strip() == "":
+        issues.append("Empty output")
     return issues
 
+
 def main():
-    """Main function"""
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
-    config_file = project_root / 'configs' / 'image-foundry.yaml'
-    template_file = project_root / 'templates' / 'dockerfile-template.tmpl'
-    
-    # Parse arguments
-    bases = []
-    if len(sys.argv) > 1:
-        bases = sys.argv[1:]
-    else:
-        bases = ['ubuntu-24.04', 'ubuntu-22.04', 'alpine-3.20']
-    
-    print(f"[INFO] Starting Dockerfile generation...")
-    print(f"[INFO] Using config: {config_file}")
-    print(f"[INFO] Using template: {template_file}")
-    
-    # Read configuration and template
-    config = read_config(config_file)
-    template_content = read_template(template_file)
-    
-    # Generate Dockerfiles
+    bases = sys.argv[1:] if len(sys.argv) > 1 else list(BASE_IMAGE_MAP.keys())
+
+    config = load_config()
+
     for base in bases:
         print(f"[INFO] Processing {base}...")
-        
-        # Process template
-        dockerfile_content = process_template(template_content, config, base)
-        
-        # Write Dockerfile
-        output_file = project_root / 'templates' / 'base' / f'{base}.Dockerfile'
-        with open(output_file, 'w') as f:
-            f.write(dockerfile_content)
-        
-        print(f"[INFO] Generated: {output_file}")
-        
-        # Validate
-        issues = validate_dockerfile(output_file)
-        if issues:
-            print(f"[WARN] Found {len(issues)} potential issues in {base}:")
-            for issue in issues:
-                print(f"  - {issue}")
-        else:
-            print(f"[INFO] Validation passed for {base}")
-        
-        print()
-    
-    print(f"[INFO] Dockerfile generation complete!")
-    print(f"[INFO] Generated files:")
-    for base in bases:
-        print(f"  - templates/base/{base}.Dockerfile")
+        vars_dict = read_variables(config, base)
+        content = process_template(TEMPLATE_FILE, vars_dict)
 
-if __name__ == '__main__':
+        out = OUTPUT_DIR / f"{base}.Dockerfile"
+        with open(out, "w") as f:
+            f.write(content)
+        print(f"[INFO] Generated: {out}")
+
+        issues = validate(content, base)
+        if issues:
+            for issue in issues:
+                print(f"  [WARN] {issue}")
+        else:
+            print(f"[INFO] Validation passed")
+
+    print("[INFO] Done!")
+
+
+if __name__ == "__main__":
     main()

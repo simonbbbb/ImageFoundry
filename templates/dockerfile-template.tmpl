@@ -7,11 +7,18 @@
 FROM {{ .BaseImage }} AS base
 
 # Common environment variables
-ENV DEBIAN_FRONTEND=noninteractive
+{{- if eq .Base "ubuntu-24.04" "ubuntu-22.04" }}
+ARG DEBIAN_FRONTEND=noninteractive
+{{- end }}
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 
 # Create non-root user
+{{- if eq .Base "ubuntu-24.04" "ubuntu-22.04" }}
 RUN groupadd -r foundry && useradd -r -g foundry -m -s /bin/bash foundry
+{{- end }}
+{{- if eq .Base "alpine-3.20" }}
+RUN addgroup -S foundry && adduser -S -G foundry -h /home/foundry -s /bin/bash foundry
+{{- end }}
 
 # Set working directory
 WORKDIR /workspace
@@ -42,6 +49,12 @@ RUN apk add --no-cache \
     git \
     bash
 {{- end }}
+
+# CIS 5.1: Remove setuid/setgid binaries to reduce privilege escalation risk
+RUN find / -perm /6000 -type f ! -path /proc/* -exec chmod a-s {} \; 2>/dev/null || true
+
+# CIS 5.2: Remove world-writable permissions
+RUN find / -xdev -type d -perm 0002 ! -path /proc/* -exec chmod o-w {} + 2>/dev/null || true
 
 # Layer for Go installation
 FROM base AS go-layer
@@ -84,6 +97,9 @@ RUN if [ -n "$NODE_VERSION" ]; then \
     npm install -g npm@latest; \
     fi
 {{- end }}
+
+# Clean npm cache
+RUN npm cache clean --force 2>/dev/null; rm -rf /root/.npm/ 2>/dev/null; true
 {{- end }}
 
 {{- if .InstallPython }}
@@ -110,6 +126,9 @@ RUN if [ -n "$PYTHON_VERSION" ]; then \
     py3-virtualenv; \
     fi
 {{- end }}
+
+# Clean pip cache
+RUN pip cache purge 2>/dev/null; rm -rf /root/.cache/pip/ 2>/dev/null; true
 {{- end }}
 
 # Layer for security tools
@@ -205,7 +224,7 @@ RUN OPA_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/opa/rel
 # Create compliance policies directory
 RUN mkdir -p /opt/compliance/policies /opt/compliance/reports
 
-# Copy default compliance policies
+# Copy compliance policies
 COPY compliance/ /opt/compliance/policies/
 {{- end }}
 
@@ -317,21 +336,23 @@ COPY --from=devops-layer /usr/local/bin/terraform /usr/local/bin/terraform
 {{- end }}
 
 # Additional packages from config
-{{- range .AdditionalPackages }}
-{{- if eq $.Base "ubuntu-24.04" "ubuntu-22.04" }}
-RUN apt-get update && apt-get install -y {{ . }} && rm -rf /var/lib/apt/lists/*
-{{- end }}
-{{- if eq $.Base "alpine-3.20" }}
-RUN apk add --no-cache {{ . }}
-{{- end }}
-{{- end }}
+{{ .PackagesRun }}
+
+# CIS 4.6: HEALTHCHECK instruction
+HEALTHCHECK NONE
 
 # Labels
 LABEL org.opencontainers.image.title="ImageFoundry Base Image ({{ .Base }})"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
-LABEL org.opencontainers.image.version="{{ .GoVersion }}"
+LABEL org.opencontainers.image.version="{{ .Version }}"
 LABEL org.opencontainers.image.created="{{ .Timestamp }}"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.authors="ImageFoundry Team"
+LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.revision="{{ .Revision }}"
+LABEL org.opencontainers.image.base.name="{{ .BaseImage }}"
 
 # Switch to non-root user
 USER foundry
