@@ -184,6 +184,14 @@ RUN find / -xdev -type d -perm 0002 ! -path /proc/* ! -path /dev/shm/* -exec chm
 # CIS 4.6: HEALTHCHECK instruction
 HEALTHCHECK NONE
 
+# Restrictive umask for file creation
+RUN echo "umask 027" >> /etc/bash.bashrc && \
+    echo "umask 027" >> /etc/profile
+
+# Disable shell command history for non-interactive use
+RUN echo "HISTSIZE=0" >> /etc/bash.bashrc && \
+    rm -f /root/.bash_history 2>/dev/null || true
+
 # Clean up build artifacts and cached data
 RUN rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
 
@@ -191,14 +199,16 @@ RUN rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-22.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T22:25:51Z"
+LABEL org.opencontainers.image.created="2026-05-12T22:31:31Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="eaae558"
+LABEL org.opencontainers.image.revision="34c26bf"
 LABEL org.opencontainers.image.base.name="ubuntu:22.04"
+LABEL org.opencontainers.image.security.seccomp="default"
+LABEL org.opencontainers.image.security.apparmor="runtime/default"
 
 # Switch to non-root user
 USER foundry
