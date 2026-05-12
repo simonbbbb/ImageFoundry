@@ -157,6 +157,7 @@ RUN set +e; \
         tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
         rm -f /tmp/trivy.tar.gz; \
     fi; \
+    touch /usr/local/bin/trivy 2>/dev/null; \
     echo "Trivy setup complete" 
 {{- end }}
 {{- end }}
