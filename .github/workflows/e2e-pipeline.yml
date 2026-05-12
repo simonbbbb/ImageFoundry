@@ -30,12 +30,12 @@ jobs:
       build-count: ${{ steps.matrix.outputs.count }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Need full history for diff
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -73,7 +73,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:
@@ -86,10 +86,10 @@ jobs:
     if: needs.determine-builds.outputs.build-count > 0
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.22'
 
@@ -121,18 +121,18 @@ jobs:
         include: ${{ fromJson(needs.determine-builds.outputs.matrix) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: image=moby/buildkit:master
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -161,7 +161,7 @@ jobs:
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: templates/base/${{ matrix.base }}.Dockerfile
@@ -181,7 +181,7 @@ jobs:
           echo "$digest" > "/tmp/digests/digest-${{ matrix.base }}-${{ matrix.arch }}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.base }}-${{ matrix.arch }}
           path: /tmp/digests/*
@@ -201,10 +201,10 @@ jobs:
     # Deduplicate to scan each base only once
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.base }}-*
@@ -217,14 +217,14 @@ jobs:
           echo "value=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.36.0
         continue-on-error: true
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}'
@@ -242,14 +242,14 @@ jobs:
           category: trivy-${{ matrix.base }}
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.24.0.24.0
         with:
           image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}'
           format: spdx-json
           output-file: sbom-${{ matrix.base }}.spdx.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ matrix.base }}
           path: sbom-${{ matrix.base }}.spdx.json
@@ -258,13 +258,14 @@ jobs:
   compliance-check:
     runs-on: ubuntu-latest
     needs: build-matrix
+    if: needs.determine-builds.outputs.build-count > 0
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -287,7 +288,7 @@ jobs:
           sudo apt-get install -y libopenscap25t64
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -321,7 +322,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -370,14 +371,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install OSV Scanner
         run: |
           go install github.com/google/osv-scanner/cmd/osv-scanner@latest
       - name: Run OSV Scanner
         continue-on-error: true
-        run: |
-          $(go env GOPATH)/bin/osv-scanner -r --format sarif -o osv-results.sarif .
+        uses: docker://ghcr.io/google/osv-scanner:latest
+        with:
+          args: scan -r --format=sarif --output=osv-results.sarif .
       - name: Upload OSV results
         if: always() && hashFiles('osv-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
@@ -395,7 +397,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up container-structure-test
         run: |
@@ -404,14 +406,14 @@ jobs:
           sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.base }}-*
@@ -450,7 +452,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install hyperfine
         run: |
@@ -458,7 +460,7 @@ jobs:
           sudo dpkg -i hyperfine_1.18.0_amd64.deb
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -470,7 +472,7 @@ jobs:
           ./scripts/performance-test.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Upload performance results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: performance-results
           path: performance-results.json
@@ -487,17 +489,17 @@ jobs:
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -511,7 +513,7 @@ jobs:
             $(for digest in $(cat /tmp/digests/*); do echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$digest"; done)
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2
 
       - name: Sign image with Cosign (keyless)
         run: |
@@ -519,7 +521,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Generate SBOM attestation
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.24.0.24.0
         with:
           image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
           format: spdx-json
@@ -565,7 +567,7 @@ jobs:
           echo "- Scanned with Trivy" >> release-notes.md
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release-notes.md
