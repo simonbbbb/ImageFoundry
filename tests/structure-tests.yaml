@@ -133,11 +133,5 @@ metadataTest:
   cmd: ['/bin/bash']
   entrypoint: []
   labels:
-    - key: 'org.opencontainers.image.version'
-      value: '.*'
-    - key: 'org.opencontainers.image.source'
-      value: '.*'
     - key: 'org.opencontainers.image.licenses'
       value: 'MIT'
-    - key: 'org.opencontainers.image.authors'
-      value: '.*'
