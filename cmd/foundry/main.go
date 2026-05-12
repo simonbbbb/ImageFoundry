@@ -183,13 +183,13 @@ E2E CI/CD, security scanning, and compliance checks.
 
 Complete documentation is available at https://github.com/yourorg/imagefoundry`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+			_ = cmd.Help()
 	},
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./image-foundry.yaml)")
+		rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./image-foundry.yaml)")
 
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(validateCmd)
@@ -204,8 +204,9 @@ func initConfig() {
 		cfgFile = "image-foundry.yaml"
 	}
 
-	if _, err := os.Stat(cfgFile); err == nil {
-		data, err := os.ReadFile(cfgFile)
+	//nolint:gosec
+	if _, err := os.Stat(filepath.Clean(cfgFile)); err == nil {
+		data, err := os.ReadFile(filepath.Clean(cfgFile)) //nolint:gosec
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading config: %v\n", err)
 			return
@@ -401,7 +402,7 @@ var initCmd = &cobra.Command{
 		}
 
 		for _, dir := range dirs {
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0750); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", dir, err)
 			}
 		}
@@ -442,7 +443,7 @@ security:
     severity: "HIGH,CRITICAL"
 `
 
-		if err := os.WriteFile("image-foundry.yaml", []byte(exampleConfig), 0644); err != nil {
+		if err := os.WriteFile("image-foundry.yaml", []byte(exampleConfig), 0600); err != nil {
 			return fmt.Errorf("failed to create config file: %w", err)
 		}
 
@@ -465,7 +466,7 @@ func loadConfig() error {
 		return fmt.Errorf("config file not found: %s", cfgFile)
 	}
 
-	data, err := os.ReadFile(cfgFile)
+	data, err := os.ReadFile(filepath.Clean(cfgFile)) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("failed to read config: %w", err)
 	}

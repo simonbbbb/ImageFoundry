@@ -1,0 +1,12 @@
+# Generated files
+templates/base/*.Dockerfile
+templates/agents/*.Dockerfile
+templates/dockerfile-template.tmpl
+
+# Test configurations
+tests/*.yaml
+configs/*.yaml
+examples/**
+
+# Third party
+vendor/

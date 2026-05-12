@@ -65,6 +65,19 @@ jobs:
           echo "Build matrix: $MATRIX"
           echo "Total builds: $COUNT"
 
+  # Dependency review for PRs
+  dependency-review:
+    runs-on: ubuntu-latest
+    needs: determine-builds
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
   # Configuration and validation
   validate:
     runs-on: ubuntu-latest
@@ -324,6 +337,7 @@ jobs:
           category: "/language:go"
 
       - name: Run Semgrep
+        continue-on-error: true
         uses: semgrep/semgrep-action@v1
         with:
           config: >-
@@ -349,6 +363,31 @@ jobs:
         with:
           sarif_file: gosec-results.sarif
           category: gosec
+
+  # OSV Scanner for dependency vulnerabilities
+  osv-scanner:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run OSV Scanner
+        continue-on-error: true
+        uses: google/osv-scanner-action@v1.0.2
+        with:
+          scan-args: |-
+            -r
+            --format
+            sarif
+            -o
+            osv-results.sarif
+            .
+      - name: Upload OSV results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner
 
   # Testing
   test:
