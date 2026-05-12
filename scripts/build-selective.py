@@ -112,43 +112,41 @@ def generate_build_matrix(images, max_parallel=2):
     else:
         high_priority = prioritized
     
-    matrix = {
-        'include': []
-    }
-    
+    matrix = []
+
     # Add high priority (build both architectures)
     for img in high_priority:
-        matrix['include'].append({
+        matrix.append({
             'base': img,
             'arch': 'amd64',
             'platform': 'linux/amd64',
             'priority': 'high'
         })
-        matrix['include'].append({
+        matrix.append({
             'base': img,
             'arch': 'arm64',
             'platform': 'linux/arm64',
             'priority': 'high'
         })
-    
+
     # Add medium priority (amd64 only to save resources)
     for img in medium_priority:
-        matrix['include'].append({
+        matrix.append({
             'base': img,
             'arch': 'amd64',
             'platform': 'linux/amd64',
             'priority': 'medium'
         })
-    
+
     # Add low priority (amd64 only)
     for img in low_priority:
-        matrix['include'].append({
+        matrix.append({
             'base': img,
             'arch': 'amd64',
             'platform': 'linux/amd64',
             'priority': 'low'
         })
-    
+
     return matrix
 
 def should_skip_build(base, config):
@@ -189,7 +187,8 @@ def main():
         # Build only images affected by changes
         changed_files = get_changed_files()
         if not changed_files:
-            print('{"images": [], "reason": "no_changes"}')
+            print("[INFO] No changed files found", file=sys.stderr)
+            print('[]')
             return
         
         affected = determine_affected_images(changed_files)
@@ -219,7 +218,8 @@ def main():
         images_to_build = args.images or []
     
     if not images_to_build:
-        print('{"images": [], "reason": "no_images"}')
+        print("[INFO] No images to build", file=sys.stderr)
+        print('[]')
         return
     
     # Generate build matrix
