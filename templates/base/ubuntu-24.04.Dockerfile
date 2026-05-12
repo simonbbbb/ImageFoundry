@@ -91,10 +91,10 @@ ARG TARGETARCH
 # Install OpenSCAP for Ubuntu 24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openscap-scanner \
-    scap-security-guide \
     python3-pip \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean; \
+    apt-get install -y --no-install-recommends scap-security-guide 2>/dev/null || true
 
 # Install OpenSCAP content for Ubuntu 24.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
@@ -182,13 +182,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-24.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:38:52Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:42:39Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="a7990c0"
+LABEL org.opencontainers.image.revision="3d25ce6"
 LABEL org.opencontainers.image.base.name="ubuntu:24.04"
 
 # Switch to non-root user

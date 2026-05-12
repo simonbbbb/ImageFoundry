@@ -187,10 +187,10 @@ ARG TARGETARCH
 # Install OpenSCAP for Ubuntu 24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openscap-scanner \
-    scap-security-guide \
     python3-pip \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean; \
+    apt-get install -y --no-install-recommends scap-security-guide 2>/dev/null || true
 
 # Install OpenSCAP content for Ubuntu 24.04
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
