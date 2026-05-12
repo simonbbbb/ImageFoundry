@@ -370,19 +370,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Install OSV Scanner
+        run: |
+          go install github.com/google/osv-scanner/cmd/osv-scanner@latest
       - name: Run OSV Scanner
         continue-on-error: true
-        uses: google/osv-scanner-action@v1.9.2
-        with:
-          scan-args: |-
-            -r
-            --format
-            sarif
-            -o
-            osv-results.sarif
-            .
+        run: |
+          osv-scanner -r --format sarif -o osv-results.sarif .
       - name: Upload OSV results
-        if: always()
+        if: always() && hashFiles('osv-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: osv-results.sarif
