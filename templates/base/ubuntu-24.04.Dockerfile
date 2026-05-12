@@ -120,7 +120,8 @@ ARG TARGETARCH
 
 # Install Docker CLI
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+    UBUNTU_CODENAME=$(awk -F= '/^VERSION_CODENAME=/ {print $2}' /etc/os-release) && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME} stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli && rm -rf /var/lib/apt/lists/*
 
 
@@ -181,13 +182,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-24.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:35:03Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:38:52Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="f689cd7"
+LABEL org.opencontainers.image.revision="a7990c0"
 LABEL org.opencontainers.image.base.name="ubuntu:24.04"
 
 # Switch to non-root user
