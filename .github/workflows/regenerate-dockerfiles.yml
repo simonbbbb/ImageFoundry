@@ -55,7 +55,7 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet HEAD~ -- templates/base/*.Dockerfile; then
+          if git diff --quiet HEAD~ -- templates/base/*.Dockerfile 2>/dev/null; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No Dockerfile changes detected"
           else
