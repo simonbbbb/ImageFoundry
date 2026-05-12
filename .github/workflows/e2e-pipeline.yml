@@ -60,7 +60,7 @@ jobs:
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           
           # Extract count for display
-          COUNT=$(echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data.get('include', [])))")
+          COUNT=$(echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data))")
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           
           echo "Build matrix: $MATRIX"
