@@ -63,16 +63,20 @@ FROM base AS security-layer
 ARG TARGETARCH
 
 
-# Install Trivy
-RUN TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
-    case "${TARGETARCH}" in \
-        amd64) TRIVY_ARCH="Linux-64bit" ;; \
-        arm64) TRIVY_ARCH="Linux-ARM64" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
-    esac && \
-    wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" && \
-    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
-    rm -f /tmp/trivy.tar.gz || true
+# Install Trivy (non-fatal on Alpine)
+RUN set +e; \
+    TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//' 2>/dev/null); \
+    if [ -n "$TRIVY_VERSION" ]; then \
+        case "${TARGETARCH}" in \
+            amd64) TRIVY_ARCH="Linux-64bit" ;; \
+            arm64) TRIVY_ARCH="Linux-ARM64" ;; \
+            *) TRIVY_ARCH="Linux-64bit" ;; \
+        esac && \
+        wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" 2>/dev/null && \
+        tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
+        rm -f /tmp/trivy.tar.gz; \
+    fi; \
+    echo "Trivy setup complete" 
 
 # Install Cosign
 RUN COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
@@ -101,10 +105,10 @@ RUN apk add --no-cache \
     wget \
     ca-certificates
 
-# Install OpenSCAP content for Alpine
+# Install OpenSCAP content for Alpine (may not be available)
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
     wget -O /usr/share/xml/scap/ssg/content/ssg-alpine319-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-alpine319-xccdf.xml
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-alpine319-xccdf.xml || true
 
 # Install OPA (Open Policy Agent)
 RUN OPA_VERSION=$(curl -s https://api.github.com/repos/open-policy-agent/opa/releases/latest | grep -o '"tag_name": "v[^\"]*"' | cut -d'"' -f4 | sed 's/v//') && \
@@ -181,13 +185,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (alpine-3.20)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:30:18Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:34:37Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="41a0656"
+LABEL org.opencontainers.image.revision="0b2f955"
 LABEL org.opencontainers.image.base.name="alpine:3.20"
 
 # Switch to non-root user

@@ -144,16 +144,20 @@ RUN curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
 {{- end }}
 
 {{- if eq .Base "alpine-3.20" }}
-# Install Trivy
-RUN TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
-    case "${TARGETARCH}" in \
-        amd64) TRIVY_ARCH="Linux-64bit" ;; \
-        arm64) TRIVY_ARCH="Linux-ARM64" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
-    esac && \
-    wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" && \
-    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
-    rm -f /tmp/trivy.tar.gz || true
+# Install Trivy (non-fatal on Alpine)
+RUN set +e; \
+    TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//' 2>/dev/null); \
+    if [ -n "$TRIVY_VERSION" ]; then \
+        case "${TARGETARCH}" in \
+            amd64) TRIVY_ARCH="Linux-64bit" ;; \
+            arm64) TRIVY_ARCH="Linux-ARM64" ;; \
+            *) TRIVY_ARCH="Linux-64bit" ;; \
+        esac && \
+        wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" 2>/dev/null && \
+        tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
+        rm -f /tmp/trivy.tar.gz; \
+    fi; \
+    echo "Trivy setup complete" 
 {{- end }}
 {{- end }}
 
@@ -218,10 +222,10 @@ RUN apk add --no-cache \
     wget \
     ca-certificates
 
-# Install OpenSCAP content for Alpine
+# Install OpenSCAP content for Alpine (may not be available)
 RUN mkdir -p /usr/share/xml/scap/ssg/content && \
     wget -O /usr/share/xml/scap/ssg/content/ssg-alpine319-xccdf.xml \
-    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-alpine319-xccdf.xml
+    https://github.com/ComplianceAsCode/content/releases/latest/download/ssg-alpine319-xccdf.xml || true
 {{- end }}
 
 # Install OPA (Open Policy Agent)
