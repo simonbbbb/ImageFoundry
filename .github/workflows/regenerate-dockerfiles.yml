@@ -43,11 +43,13 @@ jobs:
           echo "Config validation passed"
 
       - name: Regenerate Dockerfiles
+        env:
+          BASE_IMAGE: ${{ github.event.inputs.base_image }}
         run: |
-          if [ "${{ github.event.inputs.base_image }}" = "all" ] || [ "${{ github.event.inputs.base_image }}" = "" ]; then
+          if [ "$BASE_IMAGE" = "all" ] || [ "$BASE_IMAGE" = "" ]; then
             python3 scripts/generate-dockerfiles.py
           else
-            python3 scripts/generate-dockerfiles.py ${{ github.event.inputs.base_image }}
+            python3 scripts/generate-dockerfiles.py "$BASE_IMAGE"
           fi
 
       - name: Check for changes

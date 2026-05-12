@@ -51,13 +51,16 @@ jobs:
 
       - name: Determine quick build matrix
         id: matrix
+        env:
+          BUILD_ALL: ${{ github.event.inputs.build_all }}
+          BUILD_IMAGES: ${{ github.event.inputs.images }}
         run: |
-          if [ "${{ github.event.inputs.build_all }}" = "true" ]; then
+          if [ "$BUILD_ALL" = "true" ]; then
             # Build all (but still optimized)
             MATRIX=$(python3 scripts/build-selective.py --mode all)
-          elif [ -n "${{ github.event.inputs.images }}" ]; then
+          elif [ -n "$BUILD_IMAGES" ]; then
             # Build specific images
-            IMAGES=$(echo "${{ github.event.inputs.images }}" | tr ',' ' ')
+            IMAGES=$(echo "$BUILD_IMAGES" | tr ',' ' ')
             MATRIX=$(python3 scripts/build-selective.py --mode select --images $IMAGES)
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
             # For PRs, build only changed images (most optimized)
