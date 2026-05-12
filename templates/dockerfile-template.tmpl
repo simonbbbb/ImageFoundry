@@ -311,7 +311,11 @@ COPY --from=nodejs-layer /usr/bin/npm /usr/bin/npm
 {{- end }}
 
 {{- if .InstallTrivy }}
+{{- if eq .Base "alpine-3.20" }}
 COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/trivy
+{{- else }}
+COPY --from=security-layer /usr/bin/trivy /usr/bin/trivy
+{{- end }}
 {{- end }}
 
 {{- if .InstallCosign }}
