@@ -152,8 +152,8 @@ RUN TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/rele
         *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
     esac && \
     wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" && \
-    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy && \
-    rm -f /tmp/trivy.tar.gz
+    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
+    rm -f /tmp/trivy.tar.gz || true
 {{- end }}
 {{- end }}
 

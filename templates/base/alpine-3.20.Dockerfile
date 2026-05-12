@@ -71,8 +71,8 @@ RUN TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/rele
         *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
     esac && \
     wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" && \
-    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy && \
-    rm -f /tmp/trivy.tar.gz
+    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy 2>/dev/null; \
+    rm -f /tmp/trivy.tar.gz || true
 
 # Install Cosign
 RUN COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
@@ -181,13 +181,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (alpine-3.20)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:26:15Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:30:18Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="8aa3bb5"
+LABEL org.opencontainers.image.revision="41a0656"
 LABEL org.opencontainers.image.base.name="alpine:3.20"
 
 # Switch to non-root user
