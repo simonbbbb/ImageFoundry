@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImageFoundry — Build Compliant Container Images</title>
+<meta name="description" content="ImageFoundry is a container image builder with OPA policy enforcement, multi-arch support, and an integrated CI/CD pipeline.">
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --purple: #bc8cff;
+  --max-w: 960px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+  max-width: var(--max-w); margin: 0 auto;
+}
+nav .logo { font-weight: 700; font-size: 1.2rem; color: var(--text); }
+nav .logo span { color: var(--accent); }
+nav .nav-links { display: flex; gap: 24px; font-size: 0.9rem; }
+nav .nav-links a { color: var(--text-secondary); }
+nav .nav-links a:hover { color: var(--text); }
+
+/* Hero */
+.hero {
+  padding: 80px 0 60px; text-align: center;
+  background: linear-gradient(180deg, rgba(88,166,255,0.08) 0%, transparent 100%);
+}
+.hero h1 { font-size: 3rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+.hero h1 span { color: var(--accent); }
+.hero p { font-size: 1.2rem; color: var(--text-secondary); max-width: 640px; margin: 0 auto 32px; }
+.hero .badges { margin-bottom: 40px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.hero .badges img { height: 20px; }
+.cta-group { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 0.95rem;
+  transition: all 0.15s; cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #79b8ff; text-decoration: none; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #1c2128; text-decoration: none; }
+
+/* Sections */
+section { padding: 64px 0; }
+section h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+section .subtitle { color: var(--text-secondary); margin-bottom: 40px; font-size: 1.05rem; }
+.section-border { border-top: 1px solid var(--border); }
+
+/* Features grid */
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.feature-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 24px; transition: border-color 0.15s;
+}
+.feature-card:hover { border-color: var(--accent); }
+.feature-card .icon { font-size: 1.5rem; margin-bottom: 12px; }
+.feature-card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+.feature-card p { font-size: 0.9rem; color: var(--text-secondary); }
+
+/* Install */
+.install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.install-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px;
+}
+.install-card h3 { font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); }
+.install-card code {
+  display: block; background: #0d1117; border: 1px solid var(--border);
+  border-radius: 4px; padding: 10px 14px; font-size: 0.85rem; color: var(--green);
+  white-space: pre; overflow-x: auto;
+}
+
+/* OPA compliance section */
+.compliance-flow { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
+.compliance-step {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px 28px; text-align: center; min-width: 140px;
+}
+.compliance-step .num { color: var(--accent); font-weight: 700; font-size: 0.85rem; }
+.compliance-step .label { font-size: 0.9rem; margin-top: 4px; }
+.compliance-arrow { color: var(--text-secondary); font-size: 1.2rem; }
+
+.policy-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.policy-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px;
+}
+.policy-card h4 { font-size: 0.95rem; margin-bottom: 6px; }
+.policy-card .badge {
+  display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px;
+  font-weight: 600; margin-bottom: 8px;
+}
+.badge-cis { background: rgba(188,140,255,0.15); color: var(--purple); }
+.badge-nist { background: rgba(61,185,80,0.15); color: var(--green); }
+.badge-oci { background: rgba(210,153,34,0.15); color: var(--orange); }
+.policy-card p { font-size: 0.85rem; color: var(--text-secondary); }
+
+/* CTA */
+.cta-section {
+  text-align: center; padding: 80px 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(88,166,255,0.06) 100%);
+}
+.cta-section h2 { margin-bottom: 12px; }
+.cta-section p { color: var(--text-secondary); margin-bottom: 28px; }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border); padding: 32px 0;
+  text-align: center; color: var(--text-secondary); font-size: 0.85rem;
+}
+footer a { color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2rem; }
+  .features { grid-template-columns: 1fr; }
+  .install-grid { grid-template-columns: 1fr; }
+  .policy-list { grid-template-columns: 1fr; }
+  .compliance-flow { flex-direction: column; }
+  .compliance-arrow { transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo"><span>Image</span>Foundry</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#install">Install</a>
+    <a href="#compliance">Compliance</a>
+    <a href="https://github.com/simonbbbb/ImageFoundry">GitHub</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="badges">
+      <img src="https://img.shields.io/github/actions/workflow/status/simonbbbb/ImageFoundry/e2e-pipeline.yml?style=flat-square&label=CI" alt="CI">
+      <img src="https://img.shields.io/github/v/release/simonbbbb/ImageFoundry?style=flat-square&label=release" alt="Release">
+      <img src="https://img.shields.io/github/license/simonbbbb/ImageFoundry?style=flat-square&label=license" alt="License">
+      <img src="https://img.shields.io/badge/opa-policies-purple?style=flat-square" alt="OPA">
+      <img src="https://img.shields.io/badge/multi--arch-amd64%20%7C%20arm64-blue?style=flat-square" alt="Multi-Arch">
+    </div>
+    <h1>Build <span>compliant</span> container images</h1>
+    <p>ImageFoundry is a container image builder with built-in OPA policy enforcement, multi-architecture support, security scanning, and an integrated CI/CD pipeline.</p>
+    <div class="cta-group">
+      <a href="#install" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/simonbbbb/ImageFoundry" class="btn btn-secondary">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <h2>Everything you need to ship secure images</h2>
+    <p class="subtitle">From templating to enforcement, ImageFoundry covers the full lifecycle.</p>
+    <div class="features">
+      <div class="feature-card">
+        <div class="icon">📋</div>
+        <h3>OPA Policy Enforcement</h3>
+        <p>Evaluate container images against Rego policies at build time. Enforce non-root users, required labels, no secrets in env, and more.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🐳</div>
+        <h3>Multi-Architecture</h3>
+        <p>Build for amd64, arm64, and arm/v7 from a single configuration. Native Docker Buildx integration with parallel builds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔒</div>
+        <h3>Security Scanning</h3>
+        <p>Integrated Trivy vulnerability scanning, CodeQL analysis, SAST (Semgrep, Gosec), and dependency auditing.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📄</div>
+        <h3>SBOM &amp; Signing</h3>
+        <p>Automatic Software Bill of Materials generation (SPDX, CycloneDX) with Cosign keyless signing and attestation.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🧩</div>
+        <h3>Template System</h3>
+        <p>Declarative YAML configuration with Jinja-style Dockerfile templates. Tool layers for Go, Node.js, Python, kubectl, Helm, and more.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">⚡</div>
+        <h3>CI/CD Native</h3>
+        <p>GitHub Actions workflows with selective builds, parallel matrices, performance testing, and Slack notifications out of the box.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="section-border">
+  <div class="container">
+    <h2>Install in seconds</h2>
+    <p class="subtitle">Choose your platform.</p>
+    <div class="install-grid">
+      <div class="install-card">
+        <h3>Go install</h3>
+        <code>go install github.com/simonbbbb/imagefoundry/cmd/foundry@latest</code>
+      </div>
+      <div class="install-card">
+        <h3>Homebrew</h3>
+        <code>brew install simonbbbb/tap/imagefoundry</code>
+      </div>
+      <div class="install-card">
+        <h3>Docker</h3>
+        <code>docker pull ghcr.io/simonbbbb/imagefoundry:latest</code>
+      </div>
+      <div class="install-card">
+        <h3>Build from source</h3>
+        <code>git clone https://github.com/simonbbbb/imagefoundry.git<br>cd imagefoundry && make build</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart" class="section-border">
+  <div class="container">
+    <h2>Quick start</h2>
+    <p class="subtitle">Four commands to go from empty to a compliant, scanned image.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;font-family:monospace;font-size:0.9rem;line-height:1.8;overflow-x:auto;">
+      <div><span style="color:var(--green)">$</span> foundry init</div>
+      <div style="color:var(--text-secondary);margin-bottom:12px;">&nbsp;&nbsp;→ Project initialized</div>
+      <div><span style="color:var(--green)">$</span> foundry validate</div>
+      <div style="color:var(--text-secondary);margin-bottom:12px;">&nbsp;&nbsp;→ Configuration is valid</div>
+      <div><span style="color:var(--green)">$</span> foundry build</div>
+      <div style="color:var(--text-secondary);margin-bottom:12px;">&nbsp;&nbsp;→ Building container images...</div>
+      <div><span style="color:var(--green)">$</span> foundry scan</div>
+      <div style="color:var(--text-secondary);">&nbsp;&nbsp;→ Running security scans...<br>&nbsp;&nbsp;→ OPA compliance checks passed<br>&nbsp;&nbsp;→ Trivy scan completed<br>&nbsp;&nbsp;→ Security scans completed!</div>
+    </div>
+  </div>
+</section>
+
+<section id="compliance" class="section-border">
+  <div class="container">
+    <h2>Enforce policies, not just check them</h2>
+    <p class="subtitle">ImageFoundry embeds OPA (Open Policy Agent) directly in the image and evaluates Rego policies at build and scan time.</p>
+
+    <div class="compliance-flow">
+      <div class="compliance-step">
+        <div class="num">1</div>
+        <div class="label">Write Rego policies</div>
+      </div>
+      <div class="compliance-arrow">→</div>
+      <div class="compliance-step">
+        <div class="num">2</div>
+        <div class="label">Build image with OPA</div>
+      </div>
+      <div class="compliance-arrow">→</div>
+      <div class="compliance-step">
+        <div class="num">3</div>
+        <div class="label">Evaluate at scan time</div>
+      </div>
+      <div class="compliance-arrow">→</div>
+      <div class="compliance-step">
+        <div class="num">4</div>
+        <div class="label">Pass or fail</div>
+      </div>
+    </div>
+
+    <div class="policy-list">
+      <div class="policy-card">
+        <div class="badge badge-cis">CIS 4.1</div>
+        <h4>Non-root user</h4>
+        <p>Enforces that the container runs as a non-root user, following Docker security best practices.</p>
+      </div>
+      <div class="policy-card">
+        <div class="badge badge-cis">CIS 4.6</div>
+        <h4>HEALTHCHECK required</h4>
+        <p>Ensures all images include a HEALTHCHECK instruction for container orchestrators.</p>
+      </div>
+      <div class="policy-card">
+        <div class="badge badge-nist">NIST</div>
+        <h4>No secrets in env</h4>
+        <p>Scans environment variables for passwords, tokens, and API keys that shouldn't be baked into images.</p>
+      </div>
+      <div class="policy-card">
+        <div class="badge badge-oci">OCI</div>
+        <h4>Required labels</h4>
+        <p>Validates that all images carry OCI-compliant metadata labels (title, version, source, etc.).</p>
+      </div>
+      <div class="policy-card">
+        <div class="badge badge-cis">CIS</div>
+        <h4>No privileged mode</h4>
+        <p>Prevents containers from running in privileged mode or with dangerous Linux capabilities.</p>
+      </div>
+      <div class="policy-card">
+        <div class="badge badge-nist">NIST</div>
+        <h4>Read-only rootfs</h4>
+        <p>Recommends read-only root filesystem to prevent runtime container tampering.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section section-border">
+  <div class="container">
+    <h2>Ready to build compliant images?</h2>
+    <p>Star the repo, open an issue, or start building in 30 seconds.</p>
+    <div class="cta-group">
+      <a href="https://github.com/simonbbbb/ImageFoundry" class="btn btn-primary">★ Star on GitHub</a>
+      <a href="https://github.com/simonbbbb/ImageFoundry/issues/new" class="btn btn-secondary">Report an issue</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Built with 🔨 by Simon Balazs &middot; MIT Licensed &middot; <a href="https://github.com/simonbbbb/ImageFoundry">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

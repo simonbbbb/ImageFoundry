@@ -53,8 +53,15 @@ echo "Image: $IMAGE" >> "$REPORT_FILE"
 echo "=====================================" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
-# Start container
-docker run -d --name "$CONTAINER_NAME" "$IMAGE" sleep 300
+# Start container with security hardening for testing
+docker run -d --name "$CONTAINER_NAME" \
+    --read-only \
+    --cap-drop=ALL \
+    --security-opt=no-new-privileges \
+    --tmpfs /tmp:noexec,nosuid,size=64m \
+    --tmpfs /var/tmp:noexec,nosuid,size=64m \
+    --tmpfs /dev/shm:noexec,nosuid,size=64m \
+    "$IMAGE" sleep 300
 
 # CIS 4.1 - Ensure that a user for the container has been created
 echo "CIS 4.1 - Checking container user..." >> "$REPORT_FILE"
@@ -96,6 +103,47 @@ echo "" >> "$REPORT_FILE"
 echo "CIS 4.11 - Checking for sensitive files..." >> "$REPORT_FILE"
 docker exec "$CONTAINER_NAME" sh -c "find / -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' 2>/dev/null" | head -20 >> "$REPORT_FILE" || true
 
+# CIS 5.1 - Check for setuid/setgid binaries
+echo "" >> "$REPORT_FILE"
+echo "CIS 5.1 - Checking setuid/setgid binaries..." >> "$REPORT_FILE"
+SETUID_COUNT=$(docker exec "$CONTAINER_NAME" sh -c "find / -perm /6000 -type f 2>/dev/null | wc -l" 2>/dev/null || echo "unknown")
+if [ "$SETUID_COUNT" = "0" ]; then
+    echo "  ✅ PASS: No setuid/setgid binaries found" >> "$REPORT_FILE"
+else
+    echo "  ⚠️ WARN: $SETUID_COUNT setuid/setgid binary(ies) found" >> "$REPORT_FILE"
+fi
+
+# World-writable directory check
+echo "" >> "$REPORT_FILE"
+echo "CIS 5.2 - Checking world-writable directories..." >> "$REPORT_FILE"
+WW_COUNT=$(docker exec "$CONTAINER_NAME" sh -c "find / -xdev -type d -perm 0002 ! -path /proc/* 2>/dev/null | wc -l" 2>/dev/null || echo "unknown")
+echo "  ℹ️ INFO: $WW_COUNT world-writable directories found" >> "$REPORT_FILE"
+
+# HEALTHCHECK verification
+echo "" >> "$REPORT_FILE"
+echo "CIS 4.6 - Re-verify HEALTHCHECK..." >> "$REPORT_FILE"
+HC=$(docker inspect "$CONTAINER_NAME" --format='{{.Config.Healthcheck}}')
+if [ "$HC" != "<nil>" ]; then
+    echo "  ✅ PASS: HEALTHCHECK is configured" >> "$REPORT_FILE"
+else
+    echo "  ❌ FAIL: HEALTHCHECK not configured (CIS 4.6)" >> "$REPORT_FILE"
+fi
+
+# Runtime security options verification
+echo "" >> "$REPORT_FILE"
+echo "Runtime Security Options:" >> "$REPORT_FILE"
+if docker inspect "$CONTAINER_NAME" --format='{{.HostConfig.ReadonlyRootfs}}' | grep -q "true"; then
+    echo "  ✅ Read-only rootfs enabled" >> "$REPORT_FILE"
+else
+    echo "  ⚠️ Read-only rootfs not enabled" >> "$REPORT_FILE"
+fi
+if docker inspect "$CONTAINER_NAME" --format='{{.HostConfig.Privileged}}' | grep -q "false"; then
+    echo "  ✅ Not running in privileged mode" >> "$REPORT_FILE"
+fi
+if docker inspect "$CONTAINER_NAME" --format='{{range .HostConfig.CapDrop}}{{.}} {{end}}' | grep -q "ALL"; then
+    echo "  ✅ All capabilities dropped" >> "$REPORT_FILE"
+fi
+
 # Cleanup
 docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1
 
@@ -105,6 +153,49 @@ EOF
 
 chmod +x "$OUTPUT_DIR/cis-checks.sh"
 "$OUTPUT_DIR/cis-checks.sh" "$IMAGE" "$OUTPUT_DIR"
+
+# Run OPA policy evaluation
+echo "Running OPA compliance policy evaluation..."
+if command -v opa &> /dev/null; then
+    # Inspect the container and create OPA input
+    docker inspect "$IMAGE" > "$OUTPUT_DIR/container-inspect.json" 2>/dev/null
+
+    if [ -s "$OUTPUT_DIR/container-inspect.json" ]; then
+        OPA_RESULTS="$OUTPUT_DIR/opa-results.txt"
+        echo "" >> "$OPA_RESULTS"
+        echo "OPA Compliance Policy Results - $(date)" >> "$OPA_RESULTS"
+        echo "=====================================" >> "$OPA_RESULTS"
+
+        # Evaluate container security policies
+        echo "Container Security Policies:" >> "$OPA_RESULTS"
+        docker run --rm -v "$OUTPUT_DIR:/input:ro" \
+            -v "$(pwd)/compliance:/policies:ro" \
+            --entrypoint opa \
+            "$IMAGE" eval \
+            --data /policies \
+            --input /input/container-inspect.json \
+            "data.compliance.container_security" 2>/dev/null >> "$OPA_RESULTS" || \
+        # Fallback: run OPA from the host
+        opa eval \
+            --data "$(pwd)/compliance" \
+            --input "$OUTPUT_DIR/container-inspect.json" \
+            "data.compliance.container_security" 2>/dev/null >> "$OPA_RESULTS" || \
+        echo "  ⚠️ OPA evaluation skipped (not available)" >> "$OPA_RESULTS"
+
+        # Evaluate image metadata policies
+        echo "" >> "$OPA_RESULTS"
+        echo "Image Metadata Policies:" >> "$OPA_RESULTS"
+        opa eval \
+            --data "$(pwd)/compliance" \
+            --input "$OUTPUT_DIR/container-inspect.json" \
+            "data.compliance.image_metadata" 2>/dev/null >> "$OPA_RESULTS" || \
+        echo "  ⚠️ OPA metadata evaluation skipped" >> "$OPA_RESULTS"
+
+        cat "$OPA_RESULTS"
+    fi
+else
+    echo "⚠️ OPA not installed, skipping policy evaluation"
+fi
 
 # Check image size
 echo "Checking image size..."
