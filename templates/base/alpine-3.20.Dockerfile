@@ -36,7 +36,7 @@ RUN find / -xdev -type d -perm 0002 ! -path /proc/* -exec chmod o-w {} + 2>/dev/
 
 # Layer for Go installation
 FROM base AS go-layer
-ARG GO_VERSION=1.26.0
+ARG GO_VERSION=1.26.1
 ARG TARGETARCH
 
 RUN if [ -n "$GO_VERSION" ]; then \
@@ -174,13 +174,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (alpine-3.20)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:01:57Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:07:04Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="7bcfa49"
+LABEL org.opencontainers.image.revision="2a602e1"
 LABEL org.opencontainers.image.base.name="alpine:3.20"
 
 # Switch to non-root user
