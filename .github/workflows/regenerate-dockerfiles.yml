@@ -30,6 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
@@ -55,7 +56,7 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet HEAD~ -- templates/base/*.Dockerfile; then
+          if git diff --quiet HEAD~ -- templates/base/*.Dockerfile 2>/dev/null; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No Dockerfile changes detected"
           else
@@ -71,29 +72,29 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
             chore: regenerate Dockerfiles from config changes
-            
+
             - Auto-regenerated from templates/dockerfile-template.tmpl
             - Config changes in: ${{ github.sha }}
             - Run './scripts/generate-dockerfiles.sh' to regenerate manually
           title: "chore: regenerate Dockerfiles from config"
           body: |
             ## Dockerfile Regeneration
-            
+
             This PR automatically regenerates Dockerfiles based on changes to:
             - `configs/image-foundry.yaml`
             - `templates/dockerfile-template.tmpl`
             - `scripts/generate-dockerfiles.sh`
-            
+
             ### Changes detected:
             ```diff
             ${{ steps.diff.outputs.diff || 'No diff available' }}
             ```
-            
+
             ### To regenerate manually:
             ```bash
             ./scripts/generate-dockerfiles.sh
             ```
-            
+
             ### Validation:
             - ✅ Config validation passed
             - ✅ Template processing successful
@@ -112,14 +113,14 @@ jobs:
           echo "Validating generated Dockerfiles..."
           for dockerfile in templates/base/*.Dockerfile; do
             echo "Checking $dockerfile..."
-            
+
             # Basic syntax check
             if docker buildx build --dry-run -f "$dockerfile" . > /dev/null 2>&1; then
               echo "✅ $dockerfile syntax OK"
             else
               echo "⚠️ $dockerfile syntax check failed (might be context issue)"
             fi
-            
+
             # Check for required sections
             if grep -q "FROM.*AS base" "$dockerfile"; then
               echo "✅ Base layer found"
@@ -127,7 +128,7 @@ jobs:
               echo "❌ Missing base layer in $dockerfile"
               exit 1
             fi
-            
+
             if grep -q "FROM base AS final" "$dockerfile"; then
               echo "✅ Final layer found"
             else

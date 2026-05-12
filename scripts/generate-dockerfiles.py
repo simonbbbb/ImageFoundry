@@ -40,16 +40,36 @@ def get_git_revision():
         return ""
 
 
+BASE_PACKAGES = {
+    "ubuntu-24.04": {"ca-certificates", "curl", "wget", "gnupg", "jq", "git"},
+    "ubuntu-22.04": {"ca-certificates", "curl", "wget", "gnupg", "jq", "git"},
+    "alpine-3.20": {"ca-certificates", "curl", "wget", "jq", "git", "bash"},
+}
+
+
 def consolidate_packages(packages, base):
-    """Generate a single consolidated RUN command for packages."""
+    """Generate a single consolidated RUN command for packages, excluding
+    packages already installed in the base stage."""
     if not packages:
         return ""
+    base_pkgs = BASE_PACKAGES.get(base, set())
+    filtered = [p for p in packages if p not in base_pkgs]
+    if not filtered:
+        return ""
     if base in ("ubuntu-24.04", "ubuntu-22.04"):
-        pkgs = " ".join(packages)
+        pkgs = " ".join(filtered)
         return f"RUN apt-get update && apt-get install -y --no-install-recommends {pkgs} && rm -rf /var/lib/apt/lists/* && apt-get clean"
     # Alpine
-    pkgs = " ".join(packages)
+    pkgs = " ".join(filtered)
     return f"RUN apk add --no-cache {pkgs}"
+
+
+def cosign_version(security_tools):
+    """Return pinned cosign version, or empty for latest."""
+    v = security_tools.get("cosign", {}).get("version", "")
+    if v == "latest":
+        return ""
+    return v
 
 
 def read_variables(config, base):
@@ -76,6 +96,7 @@ def read_variables(config, base):
         "KubectlVersion": devops.get("kubectl", {}).get("version", "1.35.1"),
         "HelmVersion": devops.get("helm", {}).get("version", "3.19.5"),
         "TerraformVersion": devops.get("terraform", {}).get("version", "1.14.6"),
+        "CosignVersion": cosign_version(security_tools),
         "InstallNodeJS": str(nodejs.get("install", False)).lower(),
         "InstallPython": str(python_lang.get("install", False)).lower(),
         "InstallTrivy": str(security_tools.get("trivy", {}).get("install", False)).lower(),
