@@ -64,7 +64,15 @@ ARG TARGETARCH
 
 
 # Install Trivy
-RUN apk add --no-cache trivy
+RUN TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
+    case "${TARGETARCH}" in \
+        amd64) TRIVY_ARCH="Linux-64bit" ;; \
+        arm64) TRIVY_ARCH="Linux-ARM64" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac && \
+    wget -O /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" && \
+    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin/ trivy && \
+    rm -f /tmp/trivy.tar.gz
 
 # Install Cosign
 RUN COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4) && \
@@ -149,7 +157,6 @@ COPY --from=go-layer /usr/local/bin/go* /usr/local/bin/
 
 
 COPY --from=security-layer /usr/local/bin/trivy /usr/local/bin/trivy
-COPY --from=security-layer /usr/bin/trivy /usr/bin/trivy
 
 COPY --from=security-layer /usr/local/bin/cosign /usr/local/bin/cosign
 
@@ -174,13 +181,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (alpine-3.20)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:07:04Z"
+LABEL org.opencontainers.image.created="2026-05-12T19:22:27Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="2a602e1"
+LABEL org.opencontainers.image.revision="089dd62"
 LABEL org.opencontainers.image.base.name="alpine:3.20"
 
 # Switch to non-root user
