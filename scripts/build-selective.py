@@ -193,8 +193,8 @@ def main():
             return
         
         affected = determine_affected_images(changed_files)
-        print(f"[INFO] Changed files: {len(changed_files)}")
-        print(f"[INFO] Affected images: {affected}")
+        print(f"[INFO] Changed files: {len(changed_files)}", file=sys.stderr)
+        print(f"[INFO] Affected images: {affected}", file=sys.stderr)
         
         # Filter out builds that can be skipped
         images_to_build = []
@@ -202,7 +202,7 @@ def main():
             if not should_skip_build(img, config):
                 images_to_build.append(img)
             else:
-                print(f"[INFO] Skipping {img} - no enabled tools")
+                print(f"[INFO] Skipping {img} - no enabled tools", file=sys.stderr)
         
     elif args.mode == 'config':
         # Build based on configuration changes
@@ -229,14 +229,14 @@ def main():
         # Write matrix to file
         with open(args.output, 'w') as f:
             json.dump(matrix, f, indent=2)
-        print(f"[INFO] Build matrix written to {args.output}")
+        print(f"[INFO] Build matrix written to {args.output}", file=sys.stderr)
     else:
         # Output matrix for GitHub Actions
         print(json.dumps(matrix))
     
     if args.dry_run:
-        print(f"[DRY RUN] Would build: {images_to_build}")
-        print(f"[DRY RUN] Matrix: {len(matrix['include'])} jobs")
+        print(f'[DRY RUN] Would build: {images_to_build}', file=sys.stderr)
+        print(f'[DRY RUN] Matrix: {len(matrix["include"])} jobs', file=sys.stderr)
 
 if __name__ == '__main__':
     main()
