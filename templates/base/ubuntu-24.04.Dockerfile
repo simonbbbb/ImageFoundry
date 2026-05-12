@@ -182,13 +182,13 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="ImageFoundry Base Image (ubuntu-24.04)"
 LABEL org.opencontainers.image.description="Custom-built container image with development tools"
 LABEL org.opencontainers.image.version="0.1.0"
-LABEL org.opencontainers.image.created="2026-05-12T19:55:54Z"
+LABEL org.opencontainers.image.created="2026-05-12T21:44:40Z"
 LABEL org.opencontainers.image.source="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.authors="ImageFoundry Team"
 LABEL org.opencontainers.image.url="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.documentation="https://github.com/simonbbbb/ImageFoundry"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.revision="dabf508"
+LABEL org.opencontainers.image.revision="47fff4c"
 LABEL org.opencontainers.image.base.name="ubuntu:24.04"
 
 # Switch to non-root user
