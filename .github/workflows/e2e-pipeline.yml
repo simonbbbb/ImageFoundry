@@ -30,20 +30,12 @@ jobs:
       build-count: ${{ steps.matrix.outputs.count }}
     steps:
       - name: Checkout repository
-<<<<<<< HEAD
-        uses: actions/checkout@v4
-=======
         uses: actions/checkout@v6
->>>>>>> origin/main
         with:
           fetch-depth: 0  # Need full history for diff
 
       - name: Setup Python
-<<<<<<< HEAD
-        uses: actions/setup-python@v5
-=======
         uses: actions/setup-python@v6
->>>>>>> origin/main
         with:
           python-version: '3.x'
 
@@ -68,18 +60,12 @@ jobs:
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           
           # Extract count for display
-<<<<<<< HEAD
-          COUNT=$(echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data.get('include', [])))")
-=======
           COUNT=$(echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data))")
->>>>>>> origin/main
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           
           echo "Build matrix: $MATRIX"
           echo "Total builds: $COUNT"
 
-<<<<<<< HEAD
-=======
   # Dependency review for PRs
   dependency-review:
     runs-on: ubuntu-latest
@@ -92,8 +78,6 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-
->>>>>>> origin/main
   # Configuration and validation
   validate:
     runs-on: ubuntu-latest

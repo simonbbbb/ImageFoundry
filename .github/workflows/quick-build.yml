@@ -36,20 +36,12 @@ jobs:
       skip-reason: ${{ steps.matrix.outputs.skip-reason }}
     steps:
       - name: Checkout repository
-<<<<<<< HEAD
-        uses: actions/checkout@v4
-=======
         uses: actions/checkout@v6
->>>>>>> origin/main
         with:
           fetch-depth: 0
 
       - name: Setup Python
-<<<<<<< HEAD
-        uses: actions/setup-python@v5
-=======
         uses: actions/setup-python@v6
->>>>>>> origin/main
         with:
           python-version: '3.x'
 
@@ -77,7 +69,7 @@ jobs:
             # For pushes, build based on config
             MATRIX=$(python3 scripts/build-selective.py --mode config)
           fi
-          
+
           # Check if matrix is empty
           if echo "$MATRIX" | python3 -c "import sys, json; data=json.load(sys.stdin); exit(0 if data.get('include') else 1)"; then
             echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
@@ -101,16 +93,6 @@ jobs:
         include: ${{ fromJson(needs.quick-determine.outputs.matrix) }}
     steps:
       - name: Checkout repository
-<<<<<<< HEAD
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-=======
         uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
@@ -119,7 +101,6 @@ jobs:
       - name: Log in to Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
->>>>>>> origin/main
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -132,11 +113,7 @@ jobs:
           python3 -c "import yaml; config=yaml.safe_load(open('configs/image-foundry.yaml')); go_version=config['tools']['languages']['go']['version']; print(f'go-version={go_version}'); print(f'Using Go version: {go_version}')" >> $GITHUB_OUTPUT
 
       - name: Build image (no push for PRs)
-<<<<<<< HEAD
-        uses: docker/build-push-action@v5
-=======
         uses: docker/build-push-action@v7
->>>>>>> origin/main
         with:
           context: .
           file: templates/base/${{ matrix.base }}.Dockerfile
@@ -170,11 +147,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.event_name != 'pull_request'
-<<<<<<< HEAD
-        uses: github/codeql-action/upload-sarif@v3
-=======
         uses: github/codeql-action/upload-sarif@v4
->>>>>>> origin/main
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -189,11 +162,11 @@ jobs:
           echo "## Quick Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Images to build**: ${{ needs.quick-determine.outputs.build-count }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build status**: ${{ needs.quick-build.result }}" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.quick-determine.outputs.skip-reason }}" = "no_images" ]; then
             echo "- **Reason**: No images needed building" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Resource Optimization" >> $GITHUB_STEP_SUMMARY
           echo "- Limited to 1 parallel build" >> $GITHUB_STEP_SUMMARY
