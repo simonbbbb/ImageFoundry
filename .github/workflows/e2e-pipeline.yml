@@ -19,6 +19,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: simonbbbb/imagefoundry
   COSIGN_EXPERIMENTAL: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # Determine what to build
@@ -376,7 +377,7 @@ jobs:
       - name: Run OSV Scanner
         continue-on-error: true
         run: |
-          osv-scanner -r --format sarif -o osv-results.sarif .
+          $(go env GOPATH)/bin/osv-scanner -r --format sarif -o osv-results.sarif .
       - name: Upload OSV results
         if: always() && hashFiles('osv-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
