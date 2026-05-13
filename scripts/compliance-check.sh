@@ -191,6 +191,23 @@ if command -v opa &> /dev/null; then
             "data.compliance.image_metadata" 2>/dev/null >> "$OPA_RESULTS" || \
         echo "  ⚠️ OPA metadata evaluation skipped" >> "$OPA_RESULTS"
 
+        # Evaluate CIS benchmark policies
+        echo "" >> "$OPA_RESULTS"
+        echo "CIS Benchmark Policies:" >> "$OPA_RESULTS"
+        opa eval \
+            --data "$(pwd)/compliance" \
+            --input "$OUTPUT_DIR/container-inspect.json" \
+            "data.compliance.cis_benchmark" 2>/dev/null >> "$OPA_RESULTS" || \
+        echo "  ⚠️ CIS benchmark evaluation skipped" >> "$OPA_RESULTS"
+
+        # Generate OPA evaluation summary
+        echo "" >> "$OPA_RESULTS"
+        echo "CIS Benchmark Summary:" >> "$OPA_RESULTS"
+        opa eval \
+            --data "$(pwd)/compliance" \
+            --input "$OUTPUT_DIR/container-inspect.json" \
+            "data.compliance.cis_benchmark.summary" 2>/dev/null >> "$OPA_RESULTS" || true
+
         cat "$OPA_RESULTS"
     fi
 else
