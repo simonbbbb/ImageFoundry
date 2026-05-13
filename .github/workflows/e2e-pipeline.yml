@@ -191,13 +191,11 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     needs: build-matrix
-    if: needs.determine-builds.outputs.build-count > 0
+    if: always()
     strategy:
       fail-fast: false
       matrix:
-        # Only scan unique base images that were built
-        include: ${{ fromJson(needs.determine-builds.outputs.matrix) }}
-    # Deduplicate to scan each base only once
+        base: [ubuntu-24.04, ubuntu-22.04, alpine-3.20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
