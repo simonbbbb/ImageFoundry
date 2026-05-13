@@ -488,7 +488,7 @@ jobs:
       - compliance-check
       - test
       - sast-analysis
-    if: github.event_name != 'pull_request'
+    if: always() && github.event_name != 'pull_request'
 
     steps:
       - name: Download digests
