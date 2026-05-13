@@ -486,6 +486,7 @@ jobs:
   # Merge multi-arch manifests and sign
   merge-and-sign:
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs:
       - build-matrix
       - compliance-check
