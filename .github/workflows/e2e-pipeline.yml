@@ -6,7 +6,18 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main, master]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly: Monday 2am UTC
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: false
+        default: 'normal'
+        type: choice
+        options:
+          - normal
+          - nightly
 
 permissions:
   id-token: write
@@ -20,6 +31,7 @@ env:
   IMAGE_NAME: simonbbbb/imagefoundry
   COSIGN_EXPERIMENTAL: 1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NIGHTLY: ${{ github.event_name == 'schedule' || (github.event.inputs.mode == 'nightly') }}
 
 jobs:
   # Determine what to build
@@ -196,9 +208,9 @@ jobs:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}'
           format: 'sarif'
           output: 'trivy-${{ matrix.base }}-${{ matrix.arch }}.sarif'
-          severity: 'CRITICAL,HIGH'
+          severity: '${{ env.TRIVY_SEVERITY }}'
           exit-code: '0'
-          ignore-unfixed: true
+          ignore-unfixed: ${{ !env.NIGHTLY }}
 
       - name: Upload Trivy results
         if: always()

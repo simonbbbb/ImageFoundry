@@ -2,7 +2,6 @@ name: Nightly Security Scan
 
 on:
   schedule:
-    # Run weekly on Mondays at 02:00 UTC
     - cron: '0 2 * * 1'
   workflow_dispatch:
 
@@ -45,7 +44,7 @@ jobs:
           GO_VERSION=$(yq eval '.tools.languages.go.version' configs/image-foundry.yaml)
           echo "go-version=$GO_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build fresh image
+      - name: Build fresh image (no cache)
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -57,10 +56,9 @@ jobs:
           build-args: |
             GO_VERSION=${{ steps.go-version.outputs.go-version }}
             TARGETARCH=amd64
-          # No cache to ensure fresh packages
           no-cache: true
 
-      - name: Run Trivy vulnerability scan
+      - name: Run Trivy vulnerability scan (full severity)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'nightly-scan:${{ matrix.base }}'
@@ -70,14 +68,13 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
 
-      - name: Run Trivy scan (JSON output)
+      - name: Run Trivy scan (JSON output, all findings)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'nightly-scan:${{ matrix.base }}'
           format: 'json'
           output: 'trivy-nightly-${{ matrix.base }}.json'
           severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
 
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v4
@@ -114,10 +111,17 @@ jobs:
           go list -u -m -json all | go-mod-outdated -update -direct -ci || true
         continue-on-error: true
 
-      - name: Run Nancy (dependency vulnerability check)
-        run: |
-          go list -json -deps ./... | nancy sleuth || true
+      - name: Run OSV Scanner
         continue-on-error: true
+        uses: docker://ghcr.io/google/osv-scanner:latest
+        with:
+          args: scan -r --format=sarif --output=osv-results.sarif .
+      - name: Upload OSV results
+        if: always() && hashFiles('osv-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner-nightly
 
   # Generate comprehensive SBOMs
   generate-sboms:
@@ -174,7 +178,7 @@ jobs:
     steps:
       - name: Check Ubuntu 24.04 updates
         run: |
-          docker run --rm ubuntu:24.04 sh -c "apt-get update -qq && apt list --upgradable" || true
+          docker run --rm ubuntu:24.04 sh -c "apt-get update -qq && apt list --upgradable 2>/dev/null" || true
 
       - name: Check Alpine updates
         run: |
@@ -196,20 +200,20 @@ jobs:
               labels: 'security,nightly',
               state: 'open'
             });
-            
+
             const existingIssue = issues.find(i => i.title.includes('Nightly Security Scan'));
-            
+
             if (!existingIssue) {
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: '🚨 Nightly Security Scan - Review Required',
+                title: 'Nightly Security Scan - Review Required',
                 body: `New vulnerabilities may have been detected in the nightly security scan.
-                
+
                 - Run Date: ${new Date().toISOString()}
                 - Workflow: ${context.workflow}
                 - Run ID: ${context.runId}
-                
+
                 Please review the scan results and take appropriate action.`,
                 labels: ['security', 'nightly', 'automated']
               });
