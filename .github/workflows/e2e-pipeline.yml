@@ -187,32 +187,31 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Security scanning with Trivy (only scan what was built)
+  # Security scanning with Trivy (single job, no matrix to reduce runner contention)
   security-scan:
     runs-on: ubuntu-latest
     continue-on-error: true
     needs: build-matrix
     if: always()
-    strategy:
-      fail-fast: false
-      matrix:
-        base: [ubuntu-24.04, ubuntu-22.04, alpine-3.20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Download digests
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wget apt-transport-https gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Download all digests
         uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
-          pattern: digests-${{ matrix.base }}-*
+          pattern: digests-*
           merge-multiple: true
-
-      - name: Set image digest
-        id: digest
-        run: |
-          DIGEST=$(cat /tmp/digests/* | head -1 | tr -d '\n')
-          echo "value=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Log in to Container Registry
         uses: docker/login-action@v4
@@ -221,23 +220,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.36.0
+      - name: Scan all images with Trivy
         continue-on-error: true
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '0'
-          ignore-unfixed: true
+        run: |
+          mkdir -p /tmp/trivy-results
+          for digest_file in /tmp/digests/digest-*; do
+            [ -f "$digest_file" ] || continue
+            BASE=$(basename "$digest_file" | sed 's/digest-//')
+            DIGEST=$(cat "$digest_file" | tr -d '\n')
+            echo "Scanning $DIGEST..."
+            docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$DIGEST" || true
+            trivy image --severity CRITICAL,HIGH --ignore-unfixed \
+              --format sarif --output "/tmp/trivy-results/${BASE}.sarif" \
+              "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$DIGEST" || true
+          done
 
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v4
+      - name: Upload Trivy results
         if: always()
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: 'trivy-results.sarif'
-          category: trivy-${{ matrix.base }}
+          sarif_file: /tmp/trivy-results/
+          category: trivy
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.24.0.24.0
