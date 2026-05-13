@@ -484,11 +484,11 @@ jobs:
   merge-and-sign:
     runs-on: ubuntu-latest
     needs:
-      - security-scan
+      - build-matrix
       - compliance-check
       - test
       - sast-analysis
-    if: always() && github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'
 
     steps:
       - name: Download digests
