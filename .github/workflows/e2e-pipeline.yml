@@ -296,6 +296,20 @@ jobs:
           chmod +x scripts/compliance-check.sh
           ./scripts/compliance-check.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }}
 
+      - name: Generate compliance evidence report
+        continue-on-error: true
+        run: |
+          chmod +x scripts/gen-compliance-report.sh
+          ./scripts/gen-compliance-report.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.value }} compliance-reports
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compliance-evidence
+          path: compliance-reports/*
+          retention-days: 90
+
   # SAST Analysis
   sast-analysis:
     runs-on: ubuntu-latest
